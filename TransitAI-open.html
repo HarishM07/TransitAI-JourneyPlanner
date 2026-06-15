@@ -1,0 +1,4158 @@
+﻿<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TransitAI - Mobility Operating System</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Mono:wght@600;700&display=swap");
+
+    :root {
+      --bg: #eef3fb;
+      --bg2: #f8fbff;
+      --ink: #07111f;
+      --muted: #64748b;
+      --panel: rgba(255,255,255,0.72);
+      --panel-strong: rgba(255,255,255,0.92);
+      --line: rgba(15,23,42,0.10);
+      --line-strong: rgba(15,23,42,0.16);
+      --blue: #2563eb;
+      --indigo: #4f46e5;
+      --cyan: #06b6d4;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --violet: #7c3aed;
+      --shadow: 0 26px 90px rgba(15,23,42,0.14);
+      --soft: 0 14px 44px rgba(15,23,42,0.08);
+      --inset: inset 8px 8px 18px rgba(15,23,42,0.06), inset -8px -8px 18px rgba(255,255,255,0.82);
+    }
+
+    html[data-theme="dark"] {
+      --bg: #060914;
+      --bg2: #0b1020;
+      --ink: #f8fafc;
+      --muted: #94a3b8;
+      --panel: rgba(15,23,42,0.64);
+      --panel-strong: rgba(15,23,42,0.86);
+      --line: rgba(255,255,255,0.10);
+      --line-strong: rgba(255,255,255,0.18);
+      --shadow: 0 28px 110px rgba(0,0,0,0.44);
+      --soft: 0 16px 54px rgba(0,0,0,0.28);
+      --inset: inset 7px 7px 16px rgba(0,0,0,0.34), inset -7px -7px 16px rgba(255,255,255,0.04);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 14% 8%, rgba(79,70,229,0.26), transparent 28%),
+        radial-gradient(circle at 88% 14%, rgba(6,182,212,0.22), transparent 30%),
+        radial-gradient(circle at 50% 96%, rgba(16,185,129,0.13), transparent 32%),
+        linear-gradient(135deg, var(--bg), var(--bg2));
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(148,163,184,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: linear-gradient(180deg, black, transparent 78%);
+      z-index: -1;
+    }
+
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+
+    .app {
+      width: min(1680px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 14px 0 34px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 12px;
+      z-index: 50;
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      backdrop-filter: blur(28px);
+      box-shadow: var(--soft);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 210px;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      font-size: 20px;
+    }
+
+    .logo {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      color: white;
+      background:
+        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.34), transparent 28%),
+        linear-gradient(135deg, var(--indigo), var(--cyan));
+      box-shadow: 0 16px 38px rgba(6,182,212,0.25);
+      font-weight: 900;
+    }
+
+    .nav {
+      display: flex;
+      gap: 6px;
+      padding: 5px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(148,163,184,0.08);
+    }
+
+    .nav button {
+      border: 0;
+      border-radius: 999px;
+      color: var(--muted);
+      background: transparent;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 850;
+      transition: 0.22s ease;
+    }
+
+    .nav button.active,
+    .nav button:hover {
+      color: white;
+      background: linear-gradient(135deg, var(--indigo), var(--cyan));
+      box-shadow: 0 12px 26px rgba(79,70,229,0.24);
+    }
+
+    .bottom-nav {
+      display: none;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .live-pill,
+    .theme-toggle {
+      min-height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--ink);
+      background: rgba(255,255,255,0.08);
+      padding: 0 12px;
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .theme-toggle {
+      width: 44px;
+      padding: 0;
+    }
+
+    .pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 7px rgba(16,185,129,0.14);
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.2); opacity: 0.7; }
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr) 390px;
+      gap: 14px;
+      margin-top: 14px;
+      min-height: calc(100vh - 116px);
+    }
+
+    .hero.awaiting-plan {
+      grid-template-columns: minmax(320px, 720px);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .hero.awaiting-plan .map-stage,
+    .hero.awaiting-plan .recommend,
+    .hero.awaiting-plan .quick,
+    .hero.awaiting-plan .nearby-panel {
+      display: none;
+    }
+
+    .hero.awaiting-plan .planner {
+      padding: 28px;
+    }
+
+    .view-hidden {
+      display: none !important;
+    }
+
+    .page-focus {
+      grid-template-columns: minmax(0, 1fr) !important;
+      align-items: start;
+    }
+
+    .routes-focus {
+      grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr) !important;
+    }
+
+    .glass {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      backdrop-filter: blur(28px);
+      box-shadow: var(--shadow);
+    }
+
+    .panel {
+      padding: 18px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      color: #67e8f9;
+      background: rgba(6,182,212,0.11);
+      border: 1px solid rgba(6,182,212,0.18);
+      border-radius: 999px;
+      padding: 7px 11px;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+
+    .headline {
+      margin: 16px 0 12px;
+      max-width: 360px;
+      font-size: clamp(34px, 3.1vw, 54px);
+      line-height: 1.02;
+      letter-spacing: -0.055em;
+    }
+
+    .gradient {
+      color: transparent;
+      background: linear-gradient(135deg, #fff, #a5f3fc 45%, #818cf8);
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+
+    html[data-theme="light"] .gradient {
+      background: linear-gradient(135deg, #07111f, var(--indigo), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+
+    .copy {
+      color: var(--muted);
+      line-height: 1.65;
+      font-size: 15px;
+      margin: 0;
+    }
+
+    .planner h2,
+    .recommend h2,
+    .section-title {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: -0.045em;
+    }
+
+    .planner {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    select, input {
+      width: 100%;
+      min-height: 50px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      background: rgba(255,255,255,0.08);
+      padding: 0 13px;
+      outline: none;
+      font-weight: 800;
+      color-scheme: light;
+      transition: 0.22s ease;
+      box-shadow: var(--inset);
+    }
+
+    select option {
+      color: #07111f;
+      background: #ffffff;
+    }
+
+    html[data-theme="light"] select,
+    html[data-theme="light"] input {
+      background: rgba(255,255,255,0.74);
+    }
+
+    select:focus, input:focus {
+      border-color: rgba(6,182,212,0.52);
+      box-shadow: 0 0 0 5px rgba(6,182,212,0.10);
+    }
+
+    .primary {
+      min-height: 52px;
+      border: 0;
+      border-radius: 8px;
+      color: white;
+      background: linear-gradient(135deg, var(--indigo), var(--cyan));
+      font-weight: 900;
+      box-shadow: 0 18px 42px rgba(6,182,212,0.22);
+      transition: 0.22s ease;
+    }
+
+    .primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 26px 62px rgba(6,182,212,0.32);
+    }
+
+    .quick {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .quick button {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(148,163,184,0.08);
+      padding: 8px 10px;
+      font-size: 11px;
+      font-weight: 850;
+      transition: 0.2s ease;
+    }
+
+    .quick button:hover {
+      color: white;
+      border-color: transparent;
+      background: linear-gradient(135deg, var(--indigo), var(--cyan));
+      transform: translateY(-1px);
+    }
+
+    .nearby-panel,
+    .live-board,
+    .station-strip {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(148,163,184,0.08);
+    }
+
+    .nearby-title,
+    .station-strip-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 11px;
+      font-weight: 900;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .nearby-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .nearby-card,
+    .live-row,
+    .station-chip {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-strong);
+      padding: 9px;
+    }
+
+    .nearby-card b,
+    .live-row b,
+    .station-chip b {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12px;
+    }
+
+    .nearby-card span,
+    .live-row span,
+    .station-chip span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .live-board {
+      max-height: 210px;
+      overflow: auto;
+    }
+
+    .live-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .live-row em {
+      font-style: normal;
+      color: var(--green);
+      font-family: "Space Mono", monospace;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .station-strip {
+      margin-top: 12px;
+    }
+
+    .station-strip-list {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .station-chip {
+      flex: 0 0 150px;
+    }
+
+    .booking-options {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .booking-options .route-card {
+      margin: 0;
+    }
+
+    .route-side-panel {
+      display: grid;
+      gap: 10px;
+    }
+
+    .route-preview-map {
+      height: 320px;
+      min-height: 320px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(15,23,42,0.20);
+    }
+
+    #routeMiniMap {
+      width: 100%;
+      height: 100%;
+      min-height: 320px;
+    }
+
+    .side-route-summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .side-route-step {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.025));
+    }
+
+    .side-route-step i {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      color: white;
+      background: linear-gradient(135deg, var(--indigo), var(--cyan));
+      font-style: normal;
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .side-route-step b {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 14px;
+    }
+
+    .side-route-step span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .smart-field {
+      position: relative;
+    }
+
+    .suggestions {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 8px);
+      z-index: 80;
+      display: none;
+      max-height: 280px;
+      overflow: auto;
+      padding: 6px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: rgba(15,23,42,0.96);
+      box-shadow: 0 24px 70px rgba(0,0,0,0.34);
+      backdrop-filter: blur(22px);
+    }
+
+    .suggestions.open {
+      display: grid;
+      gap: 4px;
+    }
+
+    .suggestion-item {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      width: 100%;
+      min-height: 54px;
+      border: 0;
+      border-radius: 8px;
+      color: white;
+      background: transparent;
+      padding: 8px;
+      text-align: left;
+      transition: 0.16s ease;
+    }
+
+    .suggestion-item:hover,
+    .suggestion-item.active {
+      background: rgba(255,255,255,0.08);
+    }
+
+    .suggestion-icon {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--indigo), var(--cyan));
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .suggestion-item b {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+
+    .suggestion-item span {
+      display: block;
+      margin-top: 3px;
+      color: rgba(226,232,240,0.68);
+      font-size: 11px;
+    }
+
+    .suggestion-item em {
+      color: rgba(226,232,240,0.72);
+      font-style: normal;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .route-group {
+      display: grid;
+      gap: 10px;
+    }
+
+    .route-group .route-card {
+      min-height: 100%;
+    }
+
+    .route-group-title {
+      grid-column: 1 / -1;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+    }
+
+    .route-labels {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+      min-height: 22px;
+    }
+
+    .route-label {
+      border-radius: 999px;
+      padding: 5px 8px;
+      color: #bfdbfe;
+      background: rgba(59,130,246,0.13);
+      font-size: 10px;
+      font-weight: 850;
+    }
+
+    #routeOptionsFull {
+      align-items: stretch;
+    }
+
+    #routeOptionsFull .route-group {
+      display: contents;
+    }
+
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 120;
+      display: none;
+      place-items: center;
+      background: rgba(2,6,23,0.46);
+      backdrop-filter: blur(14px);
+    }
+
+    .loading-overlay.show {
+      display: grid;
+    }
+
+    .loader-card {
+      width: min(360px, calc(100% - 32px));
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      background: rgba(15,23,42,0.92);
+      padding: 18px;
+      color: white;
+      box-shadow: 0 30px 90px rgba(0,0,0,0.38);
+    }
+
+    .loader-line {
+      height: 8px;
+      margin-top: 14px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.10);
+    }
+
+    .loader-line::before {
+      content: "";
+      display: block;
+      width: 42%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--indigo), var(--cyan));
+      animation: loadingSweep 1.05s ease-in-out infinite;
+    }
+
+    @keyframes loadingSweep {
+      0% { transform: translateX(-110%); }
+      100% { transform: translateX(250%); }
+    }
+
+    .delay-alert {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid rgba(239,68,68,0.28);
+      border-radius: 8px;
+      color: #fecaca;
+      background: rgba(127,29,29,0.72);
+      box-shadow: 0 16px 40px rgba(127,29,29,0.18);
+    }
+
+    .delay-alert.show {
+      display: flex;
+    }
+
+    .delay-alert button {
+      border: 0;
+      color: inherit;
+      background: transparent;
+      font-weight: 850;
+    }
+
+    .live-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .live-badge {
+      border-radius: 999px;
+      padding: 5px 8px;
+      font-size: 10px;
+      font-weight: 900;
+      background: rgba(148,163,184,0.12);
+      color: var(--muted);
+    }
+
+    .live-badge.low { color: #86efac; background: rgba(34,197,94,0.13); }
+    .live-badge.moderate { color: #fde68a; background: rgba(234,179,8,0.13); }
+    .live-badge.high { color: #fecaca; background: rgba(239,68,68,0.14); }
+    .live-badge.delay { color: #bae6fd; background: rgba(14,165,233,0.13); }
+
+    .typing {
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .typing span {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: currentColor;
+      animation: typingBounce 0.8s ease-in-out infinite;
+    }
+
+    .typing span:nth-child(2) { animation-delay: 0.12s; }
+    .typing span:nth-child(3) { animation-delay: 0.24s; }
+
+    @keyframes typingBounce {
+      0%, 100% { transform: translateY(0); opacity: 0.45; }
+      50% { transform: translateY(-4px); opacity: 1; }
+    }
+
+    .impact-card,
+    .history-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.025));
+      padding: 14px;
+      color: var(--ink);
+    }
+
+    .history-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .history-card {
+      display: grid;
+      gap: 4px;
+      width: 100%;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .history-card b {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .history-card span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .suggestion-badges {
+      display: flex;
+      gap: 4px;
+      justify-content: flex-end;
+    }
+
+    .mini-mode {
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      color: white;
+      font-size: 10px;
+      font-weight: 900;
+    }
+
+    .mini-mode.metro { background: #2563eb; }
+    .mini-mode.train { background: #f59e0b; }
+    .mini-mode.mrts { background: #06b6d4; }
+    .mini-mode.bus { background: #10b981; }
+
+    .ticket-action-hidden {
+      display: none !important;
+    }
+
+    .score-ring {
+      --score-pct: 0%;
+      background:
+        radial-gradient(circle, var(--panel-strong) 0 52%, transparent 53%),
+        conic-gradient(from 210deg, var(--cyan) 0 var(--score-pct), rgba(148,163,184,0.16) var(--score-pct) 100%) !important;
+    }
+
+    .ticket-id-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .icon-action {
+      min-height: 34px;
+      padding: 0 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      color: var(--text);
+      background: rgba(255,255,255,0.08);
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .fare-breakdown {
+      display: grid;
+      gap: 8px;
+      margin: 12px 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.05);
+    }
+
+    .fare-breakdown div {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .fare-breakdown div:last-child {
+      color: var(--text);
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+    }
+
+    .action-menu {
+      position: relative;
+      display: inline-flex;
+      width: 100%;
+    }
+
+    .action-menu > .book {
+      width: 100%;
+    }
+
+    .action-dropdown {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 8px);
+      z-index: 30;
+      display: none;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(15,23,42,0.96);
+      box-shadow: 0 22px 60px rgba(2,6,23,0.36);
+      backdrop-filter: blur(18px);
+    }
+
+    .action-menu.open .action-dropdown {
+      display: grid;
+      gap: 6px;
+    }
+
+    .action-dropdown button {
+      min-height: 38px;
+      border: 0;
+      border-radius: 7px;
+      color: var(--text);
+      background: transparent;
+      text-align: left;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .action-dropdown button:hover {
+      background: rgba(255,255,255,0.08);
+    }
+
+    .ai-badge,
+    .live-age,
+    .plan-hint {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .plan-hint {
+      margin: -2px 0 0;
+    }
+
+    .map-fallback {
+      min-height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+      color: var(--text);
+      background:
+        linear-gradient(90deg, transparent 0 49%, rgba(34,211,238,0.35) 49% 51%, transparent 51%),
+        radial-gradient(circle at 20% 50%, rgba(79,70,229,0.34), transparent 12%),
+        radial-gradient(circle at 80% 50%, rgba(6,182,212,0.36), transparent 12%),
+        rgba(15,23,42,0.35);
+    }
+
+    .map-fallback div {
+      max-width: 420px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(15,23,42,0.78);
+      backdrop-filter: blur(16px);
+    }
+
+    .map-fallback b,
+    .map-fallback span {
+      display: block;
+    }
+
+    .map-fallback b {
+      font-size: 18px;
+      margin-bottom: 6px;
+    }
+
+    .mode.metro-line { background: rgba(37,99,235,0.12); color: #60a5fa; }
+    .mode.green-line { background: rgba(16,185,129,0.12); color: #34d399; }
+    .mode.mrts-line { background: rgba(6,182,212,0.12); color: #22d3ee; }
+    .mode.train-line { background: rgba(245,158,11,0.12); color: #fbbf24; }
+    .mode.walk-line { background: rgba(148,163,184,0.16); color: var(--muted); }
+
+    .hero-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .stat {
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.06);
+      box-shadow: var(--inset);
+    }
+
+    .stat strong {
+      display: block;
+      font-family: "Space Mono", monospace;
+      font-size: 22px;
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .map-stage {
+      position: relative;
+      overflow: hidden;
+      min-height: 100%;
+      padding: 18px;
+    }
+
+    .map-stage::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(148,163,184,0.085) 1px, transparent 1px),
+        linear-gradient(rgba(148,163,184,0.085) 1px, transparent 1px),
+        radial-gradient(circle at 18% 72%, rgba(16,185,129,0.20), transparent 24%),
+        radial-gradient(circle at 82% 22%, rgba(6,182,212,0.22), transparent 26%);
+      background-size: 42px 42px, 42px 42px, cover, cover;
+      opacity: 0.9;
+    }
+
+    .map-toolbar {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .map-search {
+      flex: 1;
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel-strong);
+      padding: 0 14px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      box-shadow: var(--soft);
+    }
+
+    .map-layer {
+      position: relative;
+      z-index: 1;
+      height: calc(100% - 60px);
+      min-height: 650px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 28% 72%, rgba(16,185,129,0.18), transparent 18%),
+        radial-gradient(circle at 74% 28%, rgba(6,182,212,0.18), transparent 20%),
+        rgba(255,255,255,0.04);
+    }
+
+    .real-map {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      filter: saturate(0.92) contrast(1.06) brightness(0.72);
+    }
+
+    #routeMap {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+      background: #0f172a;
+    }
+
+    .leaflet-container {
+      font: inherit;
+      background: #0f172a;
+    }
+
+    .leaflet-control-attribution {
+      border-radius: 8px 0 0 0;
+      background: rgba(255,255,255,0.82) !important;
+      color: #334155 !important;
+      font-size: 10px;
+    }
+
+    html[data-theme="dark"] .leaflet-tile {
+      filter: saturate(0.85) contrast(1.08) brightness(0.62);
+    }
+
+    html[data-theme="light"] .real-map {
+      filter: saturate(0.96) contrast(1.02) brightness(0.98);
+    }
+
+    .map-layer::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background:
+        linear-gradient(180deg, rgba(2,6,23,0.20), rgba(2,6,23,0.48)),
+        radial-gradient(circle at 20% 78%, rgba(16,185,129,0.22), transparent 26%),
+        radial-gradient(circle at 82% 24%, rgba(6,182,212,0.18), transparent 24%);
+    }
+
+    .route-svg {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .vehicle {
+      position: absolute;
+      left: var(--sx, 12%);
+      top: var(--sy, 68%);
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: white;
+      background: linear-gradient(135deg, var(--indigo), var(--cyan));
+      box-shadow: 0 0 0 9px rgba(6,182,212,0.14), 0 16px 36px rgba(6,182,212,0.28);
+      animation: vehicleMove 8s ease-in-out infinite;
+      z-index: 4;
+    }
+
+    @keyframes vehicleMove {
+      0% { left: var(--sx, 12%); top: var(--sy, 68%); transform: rotate(-20deg); }
+      45% { left: var(--mx, 48%); top: var(--my, 46%); transform: rotate(-18deg); }
+      100% { left: var(--ex, 79%); top: var(--ey, 22%); transform: rotate(-18deg); }
+    }
+
+    .pin {
+      position: absolute;
+      z-index: 3;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: white;
+      border: 5px solid var(--indigo);
+      box-shadow: 0 0 0 9px rgba(79,70,229,0.12);
+      transform: translate(-50%, -50%);
+    }
+
+    .pin.start { left: 11%; top: 69%; }
+    .pin.mid { left: 48%; top: 48%; border-color: var(--green); }
+    .pin.end { left: 82%; top: 24%; border-color: var(--cyan); }
+
+    .map-card {
+      position: absolute;
+      z-index: 5;
+      min-width: 210px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-strong);
+      backdrop-filter: blur(20px);
+      box-shadow: var(--soft);
+      padding: 14px;
+    }
+
+    .map-card.a { left: 22px; bottom: 22px; }
+    .map-card.b { right: 22px; top: 116px; max-width: 250px; }
+
+    .map-card small {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .map-card strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 18px;
+      letter-spacing: -0.04em;
+    }
+
+    .map-card span {
+      display: block;
+      color: var(--muted);
+      margin-top: 4px;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .recommend {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .score-ring {
+      min-height: 150px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background:
+        radial-gradient(circle, var(--panel-strong) 0 51%, transparent 52%),
+        conic-gradient(var(--cyan) 0 81%, rgba(148,163,184,0.16) 81% 100%);
+      box-shadow: var(--inset);
+    }
+
+    .score-ring strong {
+      font-family: "Space Mono", monospace;
+      font-size: 38px;
+    }
+
+    .route-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.06);
+      padding: 14px;
+      transition: 0.22s ease;
+    }
+
+    .route-card:hover,
+    .route-card.selected {
+      transform: translateY(-3px);
+      border-color: rgba(6,182,212,0.34);
+      box-shadow: var(--soft);
+    }
+
+    .route-title {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .route-title strong {
+      font-size: 18px;
+      letter-spacing: -0.04em;
+    }
+
+    .badge {
+      border-radius: 999px;
+      color: white;
+      background: linear-gradient(135deg, var(--indigo), var(--cyan));
+      padding: 5px 9px;
+      font-size: 10px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .modes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 10px 0;
+    }
+
+    .mode {
+      border-radius: 999px;
+      padding: 6px 9px;
+      font-size: 11px;
+      font-weight: 900;
+      background: rgba(79,70,229,0.12);
+      color: #a5b4fc;
+    }
+
+    html[data-theme="light"] .mode { color: var(--indigo); }
+    .mode.bus { background: rgba(16,185,129,0.12); color: #34d399; }
+    html[data-theme="light"] .mode.bus { color: #047857; }
+    .mode.train { background: rgba(239,68,68,0.11); color: #fca5a5; }
+    html[data-theme="light"] .mode.train { color: #b91c1c; }
+    .mode.auto { background: rgba(245,158,11,0.13); color: #fbbf24; }
+    html[data-theme="light"] .mode.auto { color: #b45309; }
+    .mode.bike { background: rgba(124,58,237,0.13); color: #c4b5fd; }
+    html[data-theme="light"] .mode.bike { color: var(--violet); }
+    .mode.cab { background: rgba(6,182,212,0.12); color: #67e8f9; }
+    html[data-theme="light"] .mode.cab { color: #0369a1; }
+
+    .route-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .route-stat {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: rgba(148,163,184,0.08);
+    }
+
+    .route-stat strong {
+      display: block;
+      font-family: "Space Mono", monospace;
+      font-size: 16px;
+    }
+
+    .route-stat span {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .book {
+      width: 100%;
+      min-height: 42px;
+      border: 0;
+      border-radius: 8px;
+      margin-top: 10px;
+      color: white;
+      background: var(--ink);
+      font-weight: 900;
+    }
+
+    html[data-theme="dark"] .book { background: white; color: #07111f; }
+
+    .timeline {
+      display: grid;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .timeline-step {
+      display: grid;
+      grid-template-columns: 24px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .timeline-dot {
+      width: 12px;
+      height: 12px;
+      margin-left: 6px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 0 6px rgba(6,182,212,0.12);
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: 1.4fr 0.95fr 0.9fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .section-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      backdrop-filter: blur(28px);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: -0.05em;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .kpi {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 13px;
+      background: rgba(148,163,184,0.08);
+      box-shadow: var(--inset);
+    }
+
+    .kpi strong {
+      display: block;
+      font-family: "Space Mono", monospace;
+      font-size: 22px;
+    }
+
+    .kpi span {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 850;
+    }
+
+    .bars {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 80px 1fr 44px;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .bar {
+      height: 9px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(148,163,184,0.15);
+    }
+
+    .bar div {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--indigo), var(--cyan));
+    }
+
+    .fare-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .fare-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 13px;
+      background: rgba(148,163,184,0.08);
+    }
+
+    .fare-card span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .fare-card strong {
+      font-family: "Space Mono", monospace;
+    }
+
+    .ticket {
+      color: white;
+      background:
+        radial-gradient(circle at 90% 18%, rgba(6,182,212,0.30), transparent 30%),
+        linear-gradient(135deg, #07111f, #172033);
+    }
+
+    .ticket-id {
+      font-family: "Space Mono", monospace;
+      font-size: 22px;
+      font-weight: 900;
+      margin: 8px 0 14px;
+    }
+
+    .ticket-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .ticket-box {
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      padding: 11px;
+    }
+
+    .ticket-box span {
+      display: block;
+      color: rgba(255,255,255,0.58);
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .ticket-box strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 14px;
+    }
+
+    .qr {
+      width: 132px;
+      height: 132px;
+      display: block;
+      margin-top: 16px;
+      border-radius: 8px;
+      background: white;
+      padding: 8px;
+      box-shadow: 0 20px 46px rgba(0,0,0,0.28);
+    }
+
+    .qr svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-radius: 4px;
+    }
+
+    .confirm {
+      width: 100%;
+      min-height: 46px;
+      border: 0;
+      border-radius: 8px;
+      margin-top: 14px;
+      color: #07111f;
+      background: white;
+      font-weight: 900;
+    }
+
+    .status {
+      min-height: 40px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 8px;
+      margin-top: 10px;
+      color: rgba(255,255,255,0.72);
+      background: rgba(255,255,255,0.08);
+      text-align: center;
+      font-size: 12px;
+      font-weight: 850;
+      padding: 8px;
+    }
+
+    .status.ok {
+      color: #bbf7d0;
+      border-color: rgba(16,185,129,0.34);
+      background: rgba(16,185,129,0.14);
+    }
+
+    .assistant {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 12px;
+    }
+
+    .chat {
+      min-height: 260px;
+      max-height: 330px;
+      display: grid;
+      align-content: start;
+      gap: 10px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(148,163,184,0.08);
+      padding: 12px;
+    }
+
+    .bubble {
+      max-width: 88%;
+      border-radius: 8px;
+      padding: 11px 12px;
+      line-height: 1.5;
+      font-size: 13px;
+    }
+
+    .bubble.ai {
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+    }
+
+    .bubble.user {
+      justify-self: end;
+      color: white;
+      background: linear-gradient(135deg, var(--indigo), var(--cyan));
+    }
+
+    .chat-input {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+    }
+
+    .send {
+      border: 0;
+      border-radius: 8px;
+      color: white;
+      background: linear-gradient(135deg, var(--indigo), var(--cyan));
+      padding: 0 16px;
+      font-weight: 900;
+    }
+
+    .feature-row {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .mode-tile {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--soft);
+      padding: 14px;
+      font-size: 0;
+      transition: 0.22s ease;
+    }
+
+    .mode-tile:hover {
+      transform: translateY(-4px);
+      border-color: rgba(6,182,212,0.34);
+    }
+
+    .mode-tile i {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      color: var(--cyan);
+      background: linear-gradient(135deg, rgba(79,70,229,0.16), rgba(6,182,212,0.18));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.14);
+      font-size: 12px;
+      font-style: normal;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+    }
+
+    .mode-tile::before {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      color: var(--cyan);
+      background: linear-gradient(135deg, rgba(79,70,229,0.16), rgba(6,182,212,0.18));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.14);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+    }
+
+    .mode-tile:nth-child(1)::before { content: "ME"; }
+    .mode-tile:nth-child(2)::before { content: "BU"; }
+    .mode-tile:nth-child(3)::before { content: "TR"; }
+    .mode-tile:nth-child(4)::before { content: "AU"; }
+    .mode-tile:nth-child(5)::before { content: "BT"; }
+    .mode-tile:nth-child(6)::before { content: "CB"; }
+
+    .mode-tile b {
+      display: block;
+      margin: 7px 0 4px;
+      font-size: 15px;
+    }
+
+    .mode-tile span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      font-weight: 750;
+    }
+
+    .toast {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      z-index: 100;
+      max-width: 360px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      background: var(--panel-strong);
+      box-shadow: var(--shadow);
+      padding: 14px 16px;
+      font-weight: 850;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(14px);
+      transition: 0.24s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 1260px) {
+      .hero,
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+
+      .map-layer {
+        min-height: 560px;
+      }
+
+      .feature-row {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app { width: min(100% - 18px, 1680px); }
+      .topbar { top: 8px; }
+      .nav { display: none; }
+      .bottom-nav {
+        position: fixed;
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        z-index: 70;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 4px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel-strong);
+        backdrop-filter: blur(20px);
+        box-shadow: var(--shadow);
+        padding: 6px;
+      }
+
+      .bottom-nav button {
+        border: 0;
+        border-radius: 8px;
+        color: var(--muted);
+        background: transparent;
+        padding: 10px 4px;
+        font-size: 11px;
+        font-weight: 900;
+      }
+
+      .bottom-nav button.active {
+        color: white;
+        background: linear-gradient(135deg, var(--indigo), var(--cyan));
+      }
+      .live-pill { display: none; }
+      .hero-stats,
+      .route-stats,
+      .kpis,
+      .ticket-grid,
+      .feature-row {
+        grid-template-columns: 1fr;
+      }
+      .map-layer { min-height: 460px; }
+      .map-card { position: static; margin: 12px; }
+      .headline { font-size: 44px; }
+    }
+
+    /* Enterprise product polish */
+    :root {
+      --bg: #f5f7fb;
+      --bg2: #eef3f8;
+      --panel: rgba(255,255,255,0.76);
+      --panel-strong: rgba(255,255,255,0.94);
+      --line: rgba(15,23,42,0.09);
+      --line-strong: rgba(15,23,42,0.16);
+      --shadow: 0 20px 70px rgba(15,23,42,0.10);
+      --soft: 0 12px 34px rgba(15,23,42,0.08);
+    }
+
+    html[data-theme="dark"] {
+      --bg: #05070d;
+      --bg2: #08111b;
+      --panel: rgba(11,18,32,0.74);
+      --panel-strong: rgba(15,23,42,0.92);
+      --line: rgba(226,232,240,0.08);
+      --line-strong: rgba(226,232,240,0.15);
+      --shadow: 0 28px 90px rgba(0,0,0,0.38);
+      --soft: 0 16px 44px rgba(0,0,0,0.28);
+    }
+
+    body {
+      background:
+        linear-gradient(180deg, rgba(6,182,212,0.08), transparent 32%),
+        linear-gradient(135deg, var(--bg), var(--bg2));
+    }
+
+    body::before {
+      background-image:
+        linear-gradient(rgba(148,163,184,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148,163,184,0.035) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: linear-gradient(180deg, black, transparent 70%);
+    }
+
+    .app {
+      width: min(1440px, calc(100% - 32px));
+      padding: 18px 0 40px;
+    }
+
+    .topbar,
+    .glass,
+    .section-card {
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025)), var(--panel);
+      border-color: var(--line);
+    }
+
+    .topbar {
+      min-height: 64px;
+      padding: 10px 12px;
+    }
+
+    .brand {
+      min-width: 170px;
+      letter-spacing: -0.03em;
+      font-size: 18px;
+    }
+
+    .logo {
+      width: 36px;
+      height: 36px;
+      font-size: 12px;
+      background: linear-gradient(135deg, #0f172a, #0ea5e9);
+      box-shadow: 0 12px 28px rgba(14,165,233,0.22);
+    }
+
+    .nav {
+      gap: 2px;
+      padding: 4px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .nav::-webkit-scrollbar { display: none; }
+
+    .nav button {
+      padding: 9px 13px;
+      font-size: 12px;
+      font-weight: 760;
+      letter-spacing: 0;
+    }
+
+    .nav button.active,
+    .nav button:hover {
+      color: var(--ink);
+      background: var(--panel-strong);
+      box-shadow: 0 8px 22px rgba(2,6,23,0.10);
+    }
+
+    html[data-theme="dark"] .nav button.active,
+    html[data-theme="dark"] .nav button:hover {
+      color: white;
+      background: rgba(255,255,255,0.10);
+    }
+
+    .live-pill,
+    .theme-toggle {
+      min-height: 38px;
+      font-size: 11px;
+      font-weight: 780;
+      background: rgba(148,163,184,0.08);
+    }
+
+    .hero {
+      grid-template-columns: 340px minmax(0, 1fr) 360px;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .hero.awaiting-plan {
+      grid-template-columns: minmax(320px, 620px);
+      min-height: calc(100vh - 118px);
+    }
+
+    .hero.awaiting-plan .hero-stats {
+      display: grid;
+    }
+
+    .panel,
+    .section-card {
+      padding: 18px;
+    }
+
+    .eyebrow {
+      padding: 6px 10px;
+      font-size: 10px;
+      letter-spacing: 0.10em;
+      color: #22d3ee;
+      background: rgba(6,182,212,0.10);
+      border-color: rgba(6,182,212,0.18);
+    }
+
+    .headline {
+      max-width: 520px;
+      margin: 18px 0 12px;
+      font-size: clamp(42px, 4.4vw, 70px);
+      line-height: 0.96;
+      letter-spacing: -0.06em;
+    }
+
+    .hero:not(.awaiting-plan) .headline {
+      font-size: clamp(34px, 3vw, 48px);
+    }
+
+    .copy {
+      max-width: 680px;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .planner {
+      gap: 13px;
+    }
+
+    label {
+      font-size: 10px;
+      letter-spacing: 0.11em;
+    }
+
+    select,
+    input {
+      min-height: 52px;
+      border-color: var(--line-strong);
+      background: rgba(148,163,184,0.08);
+      font-weight: 720;
+      box-shadow: none;
+    }
+
+    select:hover,
+    input:hover {
+      border-color: rgba(6,182,212,0.28);
+    }
+
+    .primary,
+    .confirm,
+    .book,
+    .send {
+      border-radius: 8px;
+      letter-spacing: 0;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+
+    .primary,
+    .confirm,
+    .send {
+      background: linear-gradient(135deg, #0f172a, #0ea5e9);
+      box-shadow: 0 18px 42px rgba(14,165,233,0.22);
+    }
+
+    .primary:hover,
+    .confirm:hover,
+    .book:hover,
+    .send:hover {
+      transform: translateY(-1px);
+    }
+
+    .map-stage {
+      overflow: hidden;
+    }
+
+    .map-toolbar {
+      top: 18px;
+      left: 18px;
+      right: 18px;
+    }
+
+    .map-search,
+    .map-card {
+      border-radius: 8px;
+      background: rgba(15,23,42,0.80);
+      border: 1px solid rgba(255,255,255,0.10);
+      backdrop-filter: blur(20px);
+    }
+
+    .map-card strong {
+      letter-spacing: -0.03em;
+    }
+
+    .recommend {
+      gap: 14px;
+    }
+
+    .score-ring {
+      border-radius: 8px;
+      min-height: 150px;
+      background:
+        linear-gradient(135deg, rgba(6,182,212,0.88), rgba(79,70,229,0.40)),
+        rgba(15,23,42,0.28);
+    }
+
+    .score-ring::before {
+      opacity: 0.18;
+    }
+
+    .route-card,
+    .kpi,
+    .fare-card,
+    .nearby-card,
+    .live-row,
+    .station-chip,
+    .ticket-box,
+    .mode-tile {
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.025));
+      border-color: var(--line);
+      box-shadow: none;
+    }
+
+    .route-card {
+      padding: 14px;
+    }
+
+    .route-card:hover,
+    .route-card.selected {
+      transform: translateY(-2px);
+      border-color: rgba(6,182,212,0.42);
+      box-shadow: 0 18px 50px rgba(6,182,212,0.12);
+    }
+
+    .route-title strong,
+    .section-head h2,
+    .recommend h2 {
+      letter-spacing: -0.04em;
+    }
+
+    .route-stats,
+    .kpis {
+      gap: 8px;
+    }
+
+    .route-stat,
+    .kpi {
+      min-width: 0;
+    }
+
+    .route-stat strong,
+    .kpi strong,
+    .ticket-id,
+    .fare-card strong {
+      font-family: Inter, system-ui, sans-serif;
+      letter-spacing: -0.03em;
+    }
+
+    .book {
+      background: rgba(255,255,255,0.92);
+      color: #07111f;
+      font-weight: 820;
+    }
+
+    html[data-theme="dark"] .book {
+      background: rgba(255,255,255,0.92);
+      color: #07111f;
+    }
+
+    .dashboard {
+      grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.75fr) minmax(300px, 0.8fr);
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .section-card {
+      min-width: 0;
+    }
+
+    .section-head {
+      align-items: start;
+      gap: 14px;
+    }
+
+    .bars,
+    .fare-grid,
+    .ticket-grid,
+    .chat,
+    .feature-row {
+      gap: 10px;
+    }
+
+    .bar-row {
+      grid-template-columns: minmax(72px, 120px) 1fr 40px;
+      font-size: 12px;
+    }
+
+    .fare-card .book {
+      width: auto;
+      min-height: 34px;
+      padding: 0 12px;
+      flex: 0 0 auto;
+    }
+
+    .ticket {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025)),
+        linear-gradient(135deg, #08111b, #0f172a);
+    }
+
+    .qr {
+      border-radius: 8px;
+      background: rgba(255,255,255,0.92);
+    }
+
+    .bubble {
+      border-radius: 8px;
+      line-height: 1.45;
+    }
+
+    .mode-tile i {
+      display: none;
+    }
+
+    .mode-tile::before {
+      margin-bottom: 8px;
+    }
+
+    .toast {
+      border-radius: 8px;
+      background: rgba(15,23,42,0.88);
+      backdrop-filter: blur(18px);
+    }
+
+    @media (max-width: 1180px) {
+      .topbar {
+        align-items: stretch;
+      }
+
+      .nav {
+        justify-content: flex-start;
+      }
+
+      .hero,
+      .dashboard,
+      .routes-focus {
+        grid-template-columns: 1fr !important;
+      }
+
+      .hero.awaiting-plan {
+        grid-template-columns: 1fr;
+      }
+
+      .recommend {
+        order: 3;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        width: min(100% - 20px, 560px);
+        padding-top: 10px;
+      }
+
+      .topbar {
+        position: static;
+        flex-wrap: wrap;
+      }
+
+      .top-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .headline,
+      .hero:not(.awaiting-plan) .headline {
+        font-size: 42px;
+      }
+
+      .panel,
+      .section-card {
+        padding: 15px;
+      }
+
+      .booking-options,
+      .nearby-grid,
+      .kpis,
+      .hero-stats,
+      .ticket-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .feature-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .route-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .map-layer {
+        min-height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand"><div class="logo">TA</div><span>TransitAI</span></div>
+      <nav class="nav">
+        <button class="active" data-page="planner">Plan</button>
+        <button data-page="routes">Routes</button>
+        <button data-page="booking">Ticket</button>
+        <button data-page="wallet">Wallet</button>
+        <button data-page="assistant">AI</button>
+      </nav>
+      <div class="top-actions">
+        <div class="live-pill"><span class="pulse"></span> Live network</div>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark and light mode">Dark</button>
+      </div>
+    </header>
+    <div class="delay-alert" id="delayAlert">
+      <button id="delayAlertText">Delays detected on your route - tap to view alternatives.</button>
+      <button id="dismissDelay" aria-label="Dismiss delay alert">x</button>
+    </div>
+    <nav class="bottom-nav">
+      <button class="active" data-page="planner">Plan</button>
+      <button data-page="routes">Routes</button>
+      <button data-page="booking">Book</button>
+      <button data-page="wallet">Wallet</button>
+      <button data-page="assistant">AI</button>
+    </nav>
+
+    <main>
+      <section class="hero" id="planner">
+        <aside class="glass panel planner">
+          <div>
+            <div class="eyebrow">TransitAI</div>
+            <h1 class="headline"><span class="gradient">Plan.</span><br>Compare.<br>Travel.</h1>
+            <p class="copy">Real-time multimodal routing for Chennai across metro, rail, MRTS, bus, and private mobility.</p>
+          </div>
+
+          <div class="field smart-field">
+            <label for="source">Source</label>
+            <input id="source" autocomplete="off" placeholder="Enter source location">
+            <div class="suggestions" id="sourceSuggestions"></div>
+          </div>
+          <div class="field smart-field">
+            <label for="destination">Destination</label>
+            <input id="destination" autocomplete="off" placeholder="Enter destination location">
+            <div class="suggestions" id="destinationSuggestions"></div>
+          </div>
+          <datalist id="stationSearch"></datalist>
+          <div class="field">
+            <label for="priority">Optimization</label>
+            <select id="priority">
+              <option>Balanced Route</option>
+              <option>Fastest Route</option>
+              <option>Cheapest Route</option>
+              <option>Green Route</option>
+            </select>
+          </div>
+          <button class="primary" id="planBtn">Plan Route</button>
+          <button class="book" id="tryDemoBtn" type="button">Try Demo</button>
+          <p class="copy plan-hint">Press Enter to plan</p>
+          <div class="nearby-panel">
+            <div class="nearby-title"><span>Nearest Real Stations</span><span id="nearbyCount">0 found</span></div>
+            <div class="nearby-grid" id="nearbyGrid"></div>
+          </div>
+          <div class="hero-stats">
+            <div class="stat"><strong id="stationCount">184</strong><span>Transit nodes</span></div>
+            <div class="stat"><strong>6</strong><span>Modes</span></div>
+            <div class="stat"><strong>Live</strong><span>Network</span></div>
+            <div class="stat"><strong id="weatherImpact">Search</strong><span id="weatherNote">Real stations</span></div>
+          </div>
+        </aside>
+
+        <section class="glass map-stage">
+          <div class="map-toolbar">
+            <div class="map-search">Route <span id="mapTitle">Not planned</span></div>
+            <div class="live-pill"><span class="pulse"></span> Tracking</div>
+          </div>
+          <div class="map-layer">
+            <div id="routeMap" aria-label="Accurate road route map"></div>
+            <div class="map-card a"><small>Recommended</small><strong id="mapMode">Awaiting route</strong><span id="mapMeta">Enter source and destination</span></div>
+            <div class="map-card b"><small>Network</small><strong id="mapNetwork">Chennai graph</strong><span id="mapNetworkMeta">Metro, rail, MRTS, MTC</span></div>
+          </div>
+        </section>
+
+        <aside class="glass panel recommend">
+          <div>
+            <div class="eyebrow">Recommendation</div>
+            <h2>Best options</h2>
+          </div>
+          <div class="score-ring"><strong id="scoreValue">--</strong></div>
+          <div class="timeline" id="timeline"></div>
+          <div class="live-board" id="liveBoard"></div>
+          <div id="routesCompact"></div>
+        </aside>
+      </section>
+
+      <section class="dashboard" id="dashboard">
+        <section class="section-card" id="routes">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">Routes</div>
+              <h2 id="routeHeading">No route selected</h2>
+            </div>
+            <p class="copy" id="routeSub">Generate a route to compare verified options.</p>
+          </div>
+          <div class="kpis">
+            <div class="kpi"><strong id="kpiTime">--</strong><span>Fastest ETA</span></div>
+            <div class="kpi"><strong id="kpiFare">--</strong><span>Lowest Fare</span></div>
+            <div class="kpi"><strong id="kpiCarbon">--</strong><span>Lowest Carbon</span></div>
+            <div class="kpi"><strong id="kpiModes">0</strong><span>Valid Options</span></div>
+          </div>
+          <div class="bars" id="scoreBars"></div>
+          <div class="booking-options" id="routeOptionsFull"></div>
+          <div class="station-strip">
+            <div class="station-strip-title"><span>Stations</span><span id="transferSummary">Transfers update automatically</span></div>
+            <div class="station-strip-list" id="stationStrip"></div>
+          </div>
+        </section>
+
+        <section class="section-card" id="fareSection">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">Route</div>
+              <h2>Journey details</h2>
+            </div>
+          </div>
+          <div class="route-preview-map"><div id="routeMiniMap" aria-label="Route map preview"></div></div>
+          <div class="route-side-panel" id="routeSidePanel"></div>
+        </section>
+
+        <aside class="section-card ticket" id="booking">
+          <div class="eyebrow">Ticket</div>
+          <div class="ticket-id-row"><div class="ticket-id" id="ticketId">TAI-WAITING</div><button class="icon-action" id="copyTicketId" aria-label="Copy ticket ID">Copy</button></div>
+          <div class="ticket-grid">
+            <div class="ticket-box"><span>Route</span><strong id="ticketRoute">--</strong></div>
+            <div class="ticket-box"><span>ETA</span><strong id="ticketEta">--</strong></div>
+            <div class="ticket-box"><span>Total</span><strong id="ticketFare">--</strong></div>
+            <div class="ticket-box"><span>Status</span><strong id="ticketStatus">Waiting</strong></div>
+          </div>
+          <div class="fare-breakdown" id="fareBreakdown">
+            <div><span>Base fare</span><strong>--</strong></div>
+            <div><span>Platform fee</span><strong>INR 5</strong></div>
+            <div><span>Total</span><strong>--</strong></div>
+          </div>
+          <div class="qr" id="qrCode"></div>
+          <button class="confirm" id="confirmBooking">Confirm Ticket</button>
+          <div class="action-menu ticket-action-hidden" id="ticketActionMenu">
+            <button class="book" id="ticketActionToggle">Download & Share</button>
+            <div class="action-dropdown" id="ticketActionDropdown">
+              <button id="downloadPass">Download PNG</button>
+              <button id="copyTicketDropdown">Copy Ticket ID</button>
+              <button id="sharePass">Share Journey</button>
+            </div>
+          </div>
+          <div class="status" id="bookingStatus">Select a route to generate your journey pass.</div>
+        </aside>
+      </section>
+
+      <section class="dashboard" id="assistant">
+        <section class="section-card assistant">
+          <div class="section-head">
+          <div>
+            <div class="eyebrow">Assistant</div>
+            <h2>Ask AI</h2>
+            <span class="ai-badge" id="aiBadge">Demo AI Assistant</span>
+          </div>
+          </div>
+          <div class="chat" id="chat">
+            <div class="bubble ai">Ask about ETA, fares, transfers, platforms, or walking distance.</div>
+          </div>
+          <div class="chat-input">
+            <input id="chatInput" placeholder="Ask about this journey">
+            <button class="send" id="sendBtn">Send</button>
+          </div>
+        </section>
+
+        <section class="section-card" id="modes">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">Modes</div>
+              <h2>Available networks</h2>
+            </div>
+            <p class="copy">Only supported modes appear for each corridor.</p>
+          </div>
+          <div class="feature-row">
+            <div class="mode-tile"><i>ME</i><b>Metro</b><span>High-frequency rail.</span></div>
+            <div class="mode-tile"><i>BU</i><b>Bus</b><span>MTC corridors.</span></div>
+            <div class="mode-tile"><i>TR</i><b>Train</b><span>Suburban and MRTS.</span></div>
+            <div class="mode-tile"><i>AU</i><b>Auto</b><span>Local pickup.</span></div>
+            <div class="mode-tile"><i>BT</i><b>Bike</b><span>Fast short trips.</span></div>
+            <div class="mode-tile"><i>CB</i><b>Cab</b><span>Private ride.</span></div>
+          </div>
+        </section>
+      </section>
+
+      <section class="dashboard" id="wallet">
+        <section class="section-card ticket">
+          <div class="eyebrow">Wallet</div>
+          <div class="ticket-id">Rewards</div>
+          <p class="copy">Real rewards and impact from confirmed journeys.</p>
+          <div class="ticket-grid">
+            <div class="ticket-box"><span>Green Points</span><strong id="greenPoints">0</strong></div>
+            <div class="ticket-box"><span>Journeys</span><strong id="walletTrips">0</strong></div>
+            <div class="ticket-box"><span>Saved CO2</span><strong id="walletSavedCo2">0kg</strong></div>
+            <div class="ticket-box"><span>Status</span><strong>Ready</strong></div>
+          </div>
+          <div class="status ok">Wallet updates after confirmed tickets.</div>
+        </section>
+        <section class="section-card">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">Impact</div>
+              <h2>CO2 savings</h2>
+            </div>
+          </div>
+          <div class="impact-card" id="co2Impact">Choose a route to calculate impact.</div>
+          <div class="section-head"><h2>Recent journeys</h2></div>
+          <div class="history-list" id="journeyHistory"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast">Journey confirmed.</div>
+  <div class="loading-overlay" id="routeLoading" aria-live="polite">
+    <div class="loader-card">
+      <div class="eyebrow">Routing</div>
+      <h2>Building best options</h2>
+      <p class="copy">Checking stations, transfers, walking access, live signals, and fares.</p>
+      <div class="loader-line"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const locations = {
+      "Tambaram": { lat: 12.9249, lng: 80.1000, road: true, bus: true, train: true, metro: false },
+      "VIT Chennai": { lat: 12.8406, lng: 80.1534, road: true, bus: true, train: false, metro: false },
+      "Guindy": { lat: 13.0067, lng: 80.2206, road: true, bus: true, train: true, metro: true },
+      "T Nagar": { lat: 13.0418, lng: 80.2341, road: true, bus: true, train: false, metro: true },
+      "Adyar": { lat: 13.0064, lng: 80.2578, road: true, bus: true, train: false, metro: false },
+      "Chennai Central": { lat: 13.0827, lng: 80.2707, road: true, bus: true, train: true, metro: true },
+      "Velachery": { lat: 12.9755, lng: 80.2207, road: true, bus: true, train: true, metro: false },
+      "Chennai Airport": { lat: 12.9941, lng: 80.1709, road: true, bus: true, train: false, metro: true },
+      "Anna Nagar": { lat: 13.0850, lng: 80.2101, road: true, bus: true, train: false, metro: true },
+      "Koyambedu": { lat: 13.0694, lng: 80.1948, road: true, bus: true, train: false, metro: true },
+      "Egmore": { lat: 13.0780, lng: 80.2615, road: true, bus: true, train: true, metro: true },
+      "Chromepet": { lat: 12.9516, lng: 80.1462, road: true, bus: true, train: true, metro: false },
+      "Siruseri": { lat: 12.8310, lng: 80.2197, road: true, bus: true, train: false, metro: false }
+    };
+
+    const modeProfiles = {
+      "Bus": { speed: 19, wait: 8, fareBase: 8, fareKm: 1.15, carbonKm: 0.030, comfort: 68, reliability: 76 },
+      "Train": { speed: 36, wait: 10, fareBase: 10, fareKm: 0.55, carbonKm: 0.018, comfort: 76, reliability: 84 },
+      "Metro": { speed: 33, wait: 6, fareBase: 12, fareKm: 1.75, carbonKm: 0.014, comfort: 88, reliability: 91 },
+      "Bike Taxi": { speed: 27, wait: 4, fareBase: 22, fareKm: 9.5, carbonKm: 0.055, comfort: 66, reliability: 82 },
+      "Auto": { speed: 23, wait: 5, fareBase: 35, fareKm: 17.5, carbonKm: 0.090, comfort: 72, reliability: 79 },
+      "Cab": { speed: 25, wait: 6, fareBase: 55, fareKm: 22, carbonKm: 0.130, comfort: 86, reliability: 86 }
+    };
+
+    const transitNetworks = {
+      metro: ["Guindy", "T Nagar", "Chennai Central", "Chennai Airport", "Anna Nagar", "Koyambedu", "Egmore"],
+      suburbanTrain: ["Tambaram", "Guindy", "Chennai Central", "Velachery", "Egmore", "Chromepet"],
+      mrts: ["Chennai Central", "Velachery", "Adyar"],
+      bus: Object.keys(locations)
+    };
+
+    const source = document.getElementById("source");
+    const destination = document.getElementById("destination");
+    const priority = document.getElementById("priority");
+    const chat = document.getElementById("chat");
+    let currentRoutes = [];
+    let selectedRouteIndex = 0;
+    let routeMap;
+    let routeLayer;
+    let markerLayer;
+    let weatherState = { factor: 1, note: "Normal", rain: 0 };
+
+    function init() {
+      const stationSearch = document.getElementById("stationSearch");
+      Object.keys(locations).forEach((name) => {
+        if (source.add) source.add(new Option(name, name));
+        if (destination.add) destination.add(new Option(name, name));
+        if (stationSearch) stationSearch.append(new Option(name, name));
+      });
+      source.value = "";
+      destination.value = "";
+      setPage("planner");
+    }
+
+    function validModes(a, b) {
+      const s = locations[a] || locations["Tambaram"], d = locations[b] || locations["Chennai Central"], modes = [];
+      if (s.bus && d.bus && transitNetworks.bus.includes(a) && transitNetworks.bus.includes(b)) modes.push("Bus");
+      if (s.train && d.train && transitNetworks.suburbanTrain.includes(a) && transitNetworks.suburbanTrain.includes(b)) modes.push("Train");
+      if (s.metro && d.metro && transitNetworks.metro.includes(a) && transitNetworks.metro.includes(b)) modes.push("Metro");
+      if (s.road && d.road) modes.push("Bike Taxi", "Auto", "Cab");
+      return modes;
+    }
+
+    function distanceKm(a, b) {
+      const start = locations[a] || locations["Tambaram"], end = locations[b] || locations["Chennai Central"];
+      const toRad = (value) => value * Math.PI / 180;
+      const dLat = toRad(end.lat - start.lat);
+      const dLng = toRad(end.lng - start.lng);
+      const lat1 = toRad(start.lat);
+      const lat2 = toRad(end.lat);
+      const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+      return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+    }
+
+    function trafficFactor() {
+      const hour = new Date().getHours();
+      if ((hour >= 8 && hour <= 10) || (hour >= 17 && hour <= 20)) return 1.28;
+      if (hour >= 22 || hour <= 5) return 0.88;
+      return 1.0;
+    }
+
+    async function updateWeatherImpact(a) {
+      const place = locations[a] || locations["Tambaram"];
+      try {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${place.lat}&longitude=${place.lng}&current=rain,precipitation,weather_code`;
+        const response = await fetch(url);
+        const data = await response.json();
+        const rain = Number(data.current?.rain || data.current?.precipitation || 0);
+        weatherState = {
+          factor: rain > 4 ? 1.22 : rain > 0.5 ? 1.12 : 1,
+          note: rain > 4 ? "Heavy rain" : rain > 0.5 ? "Rain alert" : "Normal",
+          rain
+        };
+      } catch (error) {
+        weatherState = { factor: 1, note: "Weather offline", rain: 0 };
+      }
+      document.getElementById("weatherImpact").textContent = weatherState.note;
+      document.getElementById("weatherNote").textContent = weatherState.rain ? `+${Math.round((weatherState.factor - 1) * 100)}% ETA impact` : "Weather impact";
+    }
+
+    function scoreRoute(route, maxEta, maxFare, maxCarbon) {
+      const timeScore = 100 - (route.eta / maxEta) * 100;
+      const costScore = 100 - (route.fare / maxFare) * 100;
+      const carbonScore = 100 - (route.carbon / maxCarbon) * 100;
+      return Math.max(42, Math.min(99, +(40 + timeScore * 0.40 + costScore * 0.30 + carbonScore * 0.20 + route.comfort * 0.10).toFixed(1)));
+    }
+
+    function confidenceFor(route) {
+      const signal = route.reliability * 0.55 + route.comfort * 0.20 + Math.max(0, 100 - route.eta) * 0.15 + Math.max(0, 100 - route.carbon * 30) * 0.10;
+      return Math.max(72, Math.min(98, Math.round(signal)));
+    }
+
+    function generateRoutes(a, b, liveDistanceKm = null, liveDrivingMin = null) {
+      const allowedModes = validModes(a, b);
+      const km = Math.max(1.2, liveDistanceKm || distanceKm(a, b) * 1.22);
+      const peak = trafficFactor();
+      const roughRoutes = allowedModes.map((mode) => {
+        const profile = modeProfiles[mode];
+        const modeTraffic = mode === "Metro" || mode === "Train" ? 0.96 : peak * weatherState.factor;
+        const roadEta = liveDrivingMin && ["Bike Taxi", "Auto", "Cab", "Bus"].includes(mode)
+          ? liveDrivingMin * (mode === "Bike Taxi" ? 0.86 : mode === "Cab" ? 0.94 : mode === "Auto" ? 1.03 : 1.22)
+          : (km / profile.speed) * 60 * modeTraffic;
+        const eta = Math.max(5, Math.round(roadEta + profile.wait));
+        const fare = Math.max(profile.fareBase, Math.round(profile.fareBase + km * profile.fareKm));
+        const carbon = +(km * profile.carbonKm).toFixed(2);
+        return {
+          name: mode,
+          modes: [mode],
+          eta,
+          fare,
+          carbon,
+          comfort: profile.comfort,
+          reliability: profile.reliability,
+          distance: +km.toFixed(1),
+          confidence: 0,
+          weather: weatherState.note,
+          score: 0
+        };
+      });
+      const maxEta = Math.max(...roughRoutes.map((r) => r.eta), 1);
+      const maxFare = Math.max(...roughRoutes.map((r) => r.fare), 1);
+      const maxCarbon = Math.max(...roughRoutes.map((r) => r.carbon), 0.1);
+      return roughRoutes.map((route) => ({
+        ...route,
+        score: scoreRoute(route, maxEta, maxFare, maxCarbon),
+        confidence: confidenceFor(route)
+      }));
+    }
+
+    function sortRoutes(routes) {
+      const sorted = [...routes];
+      if (priority.value === "Fastest Route") sorted.sort((a, b) => a.eta - b.eta);
+      else if (priority.value === "Cheapest Route") sorted.sort((a, b) => a.fare - b.fare);
+      else if (priority.value === "Green Route") sorted.sort((a, b) => a.carbon - b.carbon);
+      else sorted.sort((a, b) => b.score - a.score);
+      return sorted;
+    }
+
+    function modeClass(mode) {
+      const m = mode.toLowerCase();
+      if (m.includes("bus")) return "bus";
+      if (m.includes("train")) return "train";
+      if (m.includes("metro")) return "metro";
+      if (m.includes("auto")) return "auto";
+      if (m.includes("bike")) return "bike";
+      return "cab";
+    }
+
+    function ensureRouteMap() {
+      if (routeMap || !window.L) return routeMap;
+      routeMap = L.map("routeMap", {
+        zoomControl: true,
+        attributionControl: true,
+        scrollWheelZoom: true
+      });
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap"
+      }).addTo(routeMap);
+      routeLayer = L.layerGroup().addTo(routeMap);
+      markerLayer = L.layerGroup().addTo(routeMap);
+      return routeMap;
+    }
+
+    function routeMarker(label, color) {
+      return L.divIcon({
+        className: "",
+        html: `<div style="width:28px;height:28px;border-radius:999px;border:5px solid ${color};background:#fff;box-shadow:0 12px 28px rgba(2,6,23,.28);display:grid;place-items:center;color:#07111f;font-weight:900;font-size:10px;">${label}</div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      });
+    }
+
+    async function updateRealMap(a, b, route) {
+      const start = locations[a] || locations["Tambaram"];
+      const end = locations[b] || locations["Chennai Central"];
+      const map = ensureRouteMap();
+      if (!map) return;
+      routeLayer.clearLayers();
+      markerLayer.clearLayers();
+      const fallback = [[start.lat, start.lng], [end.lat, end.lng]];
+      let path = fallback;
+      let routed = false;
+      try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&alternatives=false&steps=false`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.routes && data.routes[0]) {
+          path = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+          routed = true;
+          const minutes = Math.max(1, Math.round(data.routes[0].duration / 60));
+          const km = +(data.routes[0].distance / 1000).toFixed(1);
+          currentRoutes = sortRoutes(generateRoutes(a, b, km, minutes));
+          selectedRouteIndex = Math.min(selectedRouteIndex, currentRoutes.length - 1);
+          route = currentRoutes[selectedRouteIndex] || currentRoutes[0];
+          document.getElementById("mapMode").textContent = route.name;
+          document.getElementById("mapMeta").textContent = `${route.eta} min - ${km} km - ${route.confidence}% confidence`;
+          document.getElementById("scoreValue").textContent = route.score;
+          renderCompactRoutes();
+          renderTimeline(route);
+          renderAnalytics();
+        }
+      } catch (error) {
+        routed = false;
+      }
+      L.polyline(path, { color: "#0f172a", weight: 15, opacity: 0.42, lineCap: "round" }).addTo(routeLayer);
+      L.polyline(path, { color: "#06b6d4", weight: 7, opacity: 0.96, lineCap: "round" }).addTo(routeLayer);
+      L.circleMarker(path[Math.floor(path.length / 2)], {
+        radius: 8,
+        color: "#ffffff",
+        weight: 3,
+        fillColor: "#10b981",
+        fillOpacity: 1
+      }).addTo(routeLayer);
+      L.marker([start.lat, start.lng], { icon: routeMarker("S", "#4f46e5") }).addTo(markerLayer).bindTooltip(a);
+      L.marker([end.lat, end.lng], { icon: routeMarker("D", "#06b6d4") }).addTo(markerLayer).bindTooltip(b);
+      map.fitBounds(L.latLngBounds(path), { padding: [54, 54], maxZoom: 14 });
+      setTimeout(() => map.invalidateSize(), 80);
+    }
+
+    async function renderRoutes() {
+      let a = source.value, b = destination.value;
+      if (a === b) {
+        b = Object.keys(locations).find((item) => item !== a);
+        destination.value = b;
+      }
+      await updateWeatherImpact(a);
+      currentRoutes = sortRoutes(generateRoutes(a, b));
+      const best = currentRoutes[0];
+      document.getElementById("mapTitle").textContent = `${a} to ${b}`;
+      document.getElementById("routeHeading").textContent = `${a} to ${b}`;
+      document.getElementById("routeSub").textContent = `Showing ${currentRoutes.length} verified route options for this corridor.`;
+      document.getElementById("mapMode").textContent = best.name;
+      document.getElementById("mapMeta").textContent = `${best.eta} min - INR ${best.fare} - Score ${best.score}`;
+      document.getElementById("scoreValue").textContent = best.score;
+      renderCompactRoutes();
+      renderTimeline(best);
+      renderAnalytics();
+      bookRoute(0, false);
+    }
+
+    function renderCompactRoutes() {
+      document.getElementById("routesCompact").innerHTML = currentRoutes.slice(0, 3).map((route, index) => `
+        <article class="route-card ${index === selectedRouteIndex ? "selected" : ""}" data-route="${index}">
+          <div class="route-title"><strong>${route.name}</strong><span class="badge">${index === 0 ? "AI Pick" : route.confidence + "% Confidence"}</span></div>
+          <div class="modes">${route.modes.map((m) => `<span class="mode ${modeClass(m)}">${m}</span>`).join("")}</div>
+          <div class="route-stats">
+            <div class="route-stat"><strong>${route.eta}m</strong><span>ETA</span></div>
+            <div class="route-stat"><strong>INR ${route.fare}</strong><span>Fare</span></div>
+            <div class="route-stat"><strong>${route.carbon}kg</strong><span>CO2</span></div>
+            <div class="route-stat"><strong>${route.distance}km</strong><span>Distance</span></div>
+          </div>
+          <button class="book" onclick="bookRoute(${index})">Book Route</button>
+        </article>
+      `).join("");
+    }
+
+    function renderTimeline(route) {
+      const steps = [
+        ["Start", source.value, "Now"],
+        [route.name, route.modes[0], `${Math.round(route.eta * 0.55)}m`],
+        ["Arrive", destination.value, `${route.eta}m`]
+      ];
+      document.getElementById("timeline").innerHTML = steps.map((step) => `
+        <div class="timeline-step"><span class="timeline-dot"></span><b>${step[0]} - ${step[1]}</b><span>${step[2]}</span></div>
+      `).join("");
+    }
+
+    function renderAnalytics() {
+      const fastest = [...currentRoutes].sort((a, b) => a.eta - b.eta)[0];
+      const cheapest = [...currentRoutes].sort((a, b) => a.fare - b.fare)[0];
+      const greenest = [...currentRoutes].sort((a, b) => a.carbon - b.carbon)[0];
+      document.getElementById("kpiTime").textContent = `${fastest.eta}m`;
+      document.getElementById("kpiFare").textContent = `INR ${cheapest.fare}`;
+      document.getElementById("kpiCarbon").textContent = `${greenest.carbon}kg`;
+      document.getElementById("kpiModes").textContent = currentRoutes.length;
+      document.getElementById("scoreBars").innerHTML = currentRoutes.map((r) => `
+        <div class="bar-row"><span>${r.name}</span><div class="bar"><div style="width:${r.score}%"></div></div><b>${r.score}</b></div>
+      `).join("");
+      const sidePanel = document.getElementById("routeSidePanel");
+      if (sidePanel) {
+        sidePanel.innerHTML = currentRoutes.map((r) => `
+          <div class="side-route-step"><i>${r.name.slice(0,1)}</i><div><b>${r.name}</b><span>${r.eta} min - ${r.distance} km - INR ${r.fare}</span></div></div>
+        `).join("");
+      }
+    }
+
+    function bookRoute(index, scroll = true) {
+      selectedRouteIndex = index;
+      const route = currentRoutes[index];
+      if (!route) return;
+      document.querySelectorAll("[data-route]").forEach((card) => card.classList.remove("selected"));
+      const selected = document.querySelector(`[data-route="${index}"]`);
+      if (selected) selected.classList.add("selected");
+      const ticketId = `TAI-${String(Math.floor(100000 + Math.random() * 899999))}`;
+      document.getElementById("ticketId").textContent = ticketId;
+      document.getElementById("ticketRoute").textContent = route.name;
+      document.getElementById("ticketEta").textContent = `${route.eta} min`;
+      document.getElementById("ticketFare").textContent = `INR ${route.fare + 5}`;
+      document.getElementById("ticketStatus").textContent = "Ready";
+      document.getElementById("mapMode").textContent = route.name;
+      document.getElementById("mapMeta").textContent = `${route.eta} min - INR ${route.fare} - Score ${route.score}`;
+      document.getElementById("scoreValue").textContent = route.score;
+      updateRealMap(source.value, destination.value, route);
+      document.getElementById("bookingStatus").classList.remove("ok");
+      document.getElementById("bookingStatus").textContent = `${route.name} selected. Confirm to generate QR journey pass.`;
+      updateFareBreakdown(route);
+      document.getElementById("ticketActionMenu")?.classList.add("ticket-action-hidden");
+      renderQr(ticketUrl());
+      renderTimeline(route);
+      renderCompactRoutes();
+      if (scroll) setPage("booking");
+    }
+
+    function confirmBooking() {
+      const route = window.__transitSelectedRoute || currentRoutes[selectedRouteIndex];
+      if (!route) {
+        showToast("Plan and select a route first.");
+        return;
+      }
+      document.getElementById("ticketStatus").textContent = "Confirmed";
+      document.getElementById("ticketActionMenu")?.classList.remove("ticket-action-hidden");
+      const status = document.getElementById("bookingStatus");
+      status.classList.add("ok");
+      status.textContent = `Confirmed: ${route.name} from ${source.value} to ${destination.value}. QR ticket ready.`;
+      if (window.TicketManager) window.TicketManager.afterConfirm(route);
+      showToast(`Journey confirmed - ${route.name} - ${route.eta} min - INR ${route.fare + 5}`);
+    }
+
+    function downloadTicket() {
+      const route = window.__transitSelectedRoute || currentRoutes[selectedRouteIndex];
+      if (!route) {
+        showToast("Plan and select a route first.");
+        return;
+      }
+      const ticket = [
+        "TransitAI Journey Pass",
+        `Ticket: ${document.getElementById("ticketId").textContent}`,
+        `Route: ${source.value} to ${destination.value}`,
+        `Mode: ${route.name}`,
+        `ETA: ${route.eta} min`,
+        `Fare: INR ${route.fare + 5}`,
+        `Distance: ${route.distance} km`,
+        `AI Confidence: ${route.confidence}%`
+      ].join("\n");
+      const blob = new Blob([ticket], { type: "text/plain" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `${document.getElementById("ticketId").textContent}.txt`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }
+
+    function ticketUrl() {
+      const id = encodeURIComponent(document.getElementById("ticketId")?.textContent || "TAI-WAITING");
+      return `https://transitai.app/ticket/${id}`;
+    }
+
+    function updateFareBreakdown(route) {
+      const box = document.getElementById("fareBreakdown");
+      if (!box || !route) return;
+      box.innerHTML = `
+        <div><span>Base fare</span><strong>INR ${route.fare}</strong></div>
+        <div><span>Platform fee</span><strong>INR 5</strong></div>
+        <div><span>Total</span><strong>INR ${route.fare + 5}</strong></div>
+      `;
+    }
+
+    async function copyTicketId() {
+      const id = document.getElementById("ticketId")?.textContent || "";
+      if (!id) return;
+      try {
+        await navigator.clipboard.writeText(id);
+        showToast("Ticket ID copied");
+      } catch (error) {
+        showToast(id);
+      }
+    }
+
+    function renderQr(payload) {
+      const size = 29;
+      let seed = 0;
+      for (let i = 0; i < payload.length; i++) seed = (seed * 31 + payload.charCodeAt(i)) >>> 0;
+      const cells = [];
+      const finder = (x, y) => {
+        cells.push(`<rect x="${x}" y="${y}" width="7" height="7" fill="#07111f"/>`);
+        cells.push(`<rect x="${x + 1}" y="${y + 1}" width="5" height="5" fill="#fff"/>`);
+        cells.push(`<rect x="${x + 2}" y="${y + 2}" width="3" height="3" fill="#07111f"/>`);
+      };
+      finder(1, 1); finder(size - 8, 1); finder(1, size - 8);
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const inFinder = (x <= 8 && y <= 8) || (x >= size - 9 && y <= 8) || (x <= 8 && y >= size - 9);
+          if (inFinder) continue;
+          const value = (x * 17 + y * 29 + seed + ((x * y) % 13)) % 7;
+          if (value === 0 || value === 2 || value === 5) cells.push(`<rect x="${x}" y="${y}" width="1" height="1" rx="0.08" fill="#07111f"/>`);
+        }
+      }
+      document.getElementById("qrCode").innerHTML = `<svg viewBox="0 0 ${size} ${size}" role="img" aria-label="TransitAI QR ticket"><rect width="${size}" height="${size}" fill="#fff"/>${cells.join("")}</svg>`;
+    }
+
+    function assistantAnswer(text) {
+      const q = text.toLowerCase();
+      if (!currentRoutes.length && !window.__transitSelectedRoute) return "Plan a journey first, then I can compare ETA, fare, transfers, walking distance, and live arrivals.";
+      const best = window.__transitSelectedRoute || currentRoutes[0];
+      const fastest = [...currentRoutes].sort((a, b) => a.eta - b.eta)[0];
+      const cheapest = [...currentRoutes].sort((a, b) => a.fare - b.fare)[0];
+      const greenest = [...currentRoutes].sort((a, b) => a.carbon - b.carbon)[0];
+      if (q.includes("leave") || q.includes("depart") || q.includes("time")) return trafficFactor() > 1 ? "Leave 12 minutes later to avoid peak congestion. TransitAI estimates a lower road delay and potential fare savings on private modes." : "Current departure window is good. Traffic pressure is normal, so booking now is reasonable.";
+      if (q.includes("weather") || q.includes("rain") || q.includes("delay")) return `${weatherState.note}: road-based options are adjusted by ${Math.round((weatherState.factor - 1) * 100)}% ETA impact. Rail modes are less affected when available.`;
+      if (q.includes("carbon") || q.includes("green")) return `${greenest.name} is the lowest-carbon option at ${greenest.carbon} kg CO2. Choosing it can earn Green Points in the wallet.`;
+      if (q.includes("confidence")) return `${best.name} has ${best.confidence}% AI confidence based on route reliability, ETA, fare, carbon impact, comfort, weather, and peak-hour conditions.`;
+      if (q.includes("compare")) return `Fastest is ${fastest.name} at ${fastest.eta} minutes. Cheapest is ${cheapest.name} at INR ${cheapest.fare}. Lowest carbon is ${greenest.name} at ${greenest.carbon} kg CO2.`;
+      if (q.includes("metro")) return validModes(source.value, destination.value).includes("Metro") ? "Metro is available because both endpoints support metro access." : "Metro is not shown because this corridor does not have valid metro connectivity at both endpoints.";
+      if (q.includes("fare") || q.includes("cost")) return `${best.name} costs INR ${best.fare}, plus INR 5 platform fee in checkout.`;
+      if (q.includes("why")) return `${best.name} is recommended because it balances ${best.eta} min ETA, INR ${best.fare} fare, ${best.carbon} kg CO2, ${best.comfort}/100 comfort, ${best.reliability}/100 reliability, and ${best.confidence}% confidence.`;
+      return `I recommend ${best.name}: ${best.eta} minutes, INR ${best.fare}, ${best.carbon} kg CO2, ${best.distance} km, ${best.confidence}% confidence, score ${best.score}/100.`;
+    }
+
+    function sendChat() {
+      const input = document.getElementById("chatInput");
+      const text = input.value.trim();
+      if (!text) return;
+      chat.insertAdjacentHTML("beforeend", `<div class="bubble user">${text}</div>`);
+      input.value = "";
+      if (window.TransitAI?.ask) {
+        window.TransitAI.ask(text);
+      } else {
+        chat.insertAdjacentHTML("beforeend", `<div class="bubble ai">${assistantAnswer(text)}</div>`);
+      }
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function setPage(page) {
+      const plannerView = document.getElementById("planner");
+      const dashboardView = document.getElementById("dashboard");
+      const assistantView = document.getElementById("assistant");
+      const walletView = document.getElementById("wallet");
+      const routesView = document.getElementById("routes");
+      const fareView = document.getElementById("fareSection");
+      const bookingView = document.getElementById("booking");
+      const chatView = document.querySelector("#assistant .assistant");
+      const modesView = document.getElementById("modes");
+
+      [plannerView, dashboardView, assistantView, walletView].filter(Boolean).forEach((view) => view.classList.add("view-hidden"));
+      [routesView, fareView, bookingView, chatView, modesView].filter(Boolean).forEach((view) => view.classList.remove("view-hidden"));
+      [dashboardView, assistantView, walletView].filter(Boolean).forEach((view) => view.classList.remove("page-focus", "routes-focus"));
+
+      if (page === "planner") {
+        plannerView.classList.remove("view-hidden");
+        setTimeout(() => routeMap && routeMap.invalidateSize(), 80);
+      } else if (page === "routes") {
+        dashboardView.classList.remove("view-hidden");
+        dashboardView.classList.add("routes-focus");
+        bookingView.classList.add("view-hidden");
+        setTimeout(() => {
+          if (window.__transitSelectedRoute && window.TransitLayer?.drawMiniMap) {
+            window.TransitLayer.drawMiniMap(window.__transitSelectedRoute);
+          }
+        }, 120);
+      } else if (page === "booking") {
+        dashboardView.classList.remove("view-hidden");
+        dashboardView.classList.add("page-focus");
+        routesView.classList.add("view-hidden");
+        fareView.classList.add("view-hidden");
+      } else if (page === "dashboard") {
+        dashboardView.classList.remove("view-hidden");
+      } else if (page === "assistant") {
+        assistantView.classList.remove("view-hidden");
+        assistantView.classList.add("page-focus");
+        modesView.classList.add("view-hidden");
+      } else if (page === "modes") {
+        assistantView.classList.remove("view-hidden");
+        assistantView.classList.add("page-focus");
+        chatView.classList.add("view-hidden");
+      } else if (page === "wallet") {
+        walletView.classList.remove("view-hidden");
+        walletView.classList.add("routes-focus");
+      }
+
+      document.querySelectorAll("[data-page]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.page === page);
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 2800);
+    }
+
+    document.getElementById("planBtn").addEventListener("click", async () => {
+      const loading = document.getElementById("routeLoading");
+      if (window.TransitLayer) {
+        loading?.classList.add("show");
+        await new Promise((resolve) => setTimeout(resolve, 520));
+        const ok = window.TransitLayer.plan();
+        loading?.classList.remove("show");
+        if (ok) setPage("routes");
+      } else {
+        loading?.classList.add("show");
+        await renderRoutes();
+        loading?.classList.remove("show");
+        setPage("routes");
+      }
+    });
+    source.addEventListener("change", () => {});
+    destination.addEventListener("change", () => {});
+    priority.addEventListener("change", () => {
+      if (window.TransitLayer && source.value && destination.value) window.TransitLayer.plan();
+      else if (!window.TransitLayer) renderRoutes();
+    });
+    document.querySelectorAll("[data-quick]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const [a, b] = button.dataset.quick.split("|");
+        source.value = a;
+        destination.value = b;
+        if (window.TransitLayer) window.TransitLayer.plan();
+        else await renderRoutes();
+        setPage("routes");
+      });
+    });
+    document.querySelectorAll("[data-page]").forEach((button) => {
+      button.addEventListener("click", () => {
+        if (["routes", "booking"].includes(button.dataset.page) && window.TransitLayer && !window.TransitLayer.hasPlan()) {
+          showToast("Plan a journey first.");
+          setPage("planner");
+          return;
+        }
+        setPage(button.dataset.page);
+      });
+    });
+    document.getElementById("confirmBooking").addEventListener("click", confirmBooking);
+    document.getElementById("sendBtn").addEventListener("click", sendChat);
+    document.getElementById("chatInput").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") sendChat();
+    });
+    document.getElementById("themeToggle").addEventListener("click", () => {
+      const root = document.documentElement;
+      const next = root.dataset.theme === "dark" ? "light" : "dark";
+      root.dataset.theme = next;
+      document.getElementById("themeToggle").textContent = next === "dark" ? "Dark" : "Light";
+    });
+    init();
+  </script>
+  <script>
+    (() => {
+      const S = [
+        ["wimco","Wimco Nagar Depot",13.1846,80.3091,"metro","Blue Line","P1 to Airport","parking,lifts,accessible"],
+        ["tiruvot","Tiruvottiyur Metro",13.1596,80.3002,"metro","Blue Line","P1 to Airport / P2 to Wimco","parking,lifts,accessible"],
+        ["newwash","New Washermenpet",13.1148,80.2949,"metro","Blue Line","P1 to Airport / P2 to Wimco","lifts,accessible"],
+        ["tondi","Tondiarpet Metro",13.1246,80.2893,"metro","Blue Line","P1 to Airport / P2 to Wimco","lifts,accessible"],
+        ["washermetro","Washermanpet Metro",13.1075,80.2808,"metro","Blue Line","P1 to Airport / P2 to Wimco","parking,lifts,accessible"],
+        ["mannadi","Mannadi",13.0957,80.2860,"metro","Blue Line","Island platform","lifts,accessible"],
+        ["highcourt","High Court",13.0879,80.2855,"metro","Blue Line","Island platform","lifts,accessible"],
+        ["centralmetro","MGR Central Metro",13.0825,80.2755,"metro","Blue/Green Interchange","P1-4 Green / P5-6 Blue","parking,lifts,accessible,interchange"],
+        ["govestate","Government Estate",13.0696,80.2723,"metro","Blue Line","Island platform","lifts,accessible"],
+        ["lic","LIC",13.0647,80.2642,"metro","Blue Line","Island platform","lifts,accessible"],
+        ["thousand","Thousand Lights",13.0615,80.2544,"metro","Blue Line","Island platform","lifts,accessible"],
+        ["agdm","AG-DMS",13.0446,80.2487,"metro","Blue Line","Island platform","lifts,accessible"],
+        ["teynampet","Teynampet",13.0379,80.2471,"metro","Blue Line","Island platform","lifts,accessible"],
+        ["nandanam","Nandanam",13.0317,80.2395,"metro","Blue Line","Island platform","lifts,accessible"],
+        ["saidapetm","Saidapet Metro",13.0235,80.2283,"metro","Blue Line","Island platform","lifts,accessible"],
+        ["littlemount","Little Mount",13.0149,80.2235,"metro","Blue Line","P1 to Airport / P2 to Wimco","parking,lifts,accessible"],
+        ["guindym","Guindy Metro",13.0096,80.2137,"metro","Blue Line","P1 to Airport / P2 to Wimco","parking,lifts,accessible,interchange"],
+        ["nanganallur","Nanganallur Road",12.9996,80.1936,"metro","Blue Line","P1 to Airport / P2 to Wimco","parking,lifts,accessible"],
+        ["meenambmetro","Meenambakkam Metro",12.9878,80.1762,"metro","Blue Line","P1 to Airport / P2 to Wimco","parking,lifts,accessible"],
+        ["airportm","Chennai Airport Metro",12.9810,80.1642,"metro","Blue Line","Terminal platform","parking,lifts,accessible,interchange"],
+        ["egmorem","Egmore Metro",13.0784,80.2590,"metro","Green Line","P1 to St Thomas Mount / P2 to Central","lifts,accessible,interchange"],
+        ["nehrupark","Nehru Park",13.0787,80.2503,"metro","Green Line","Island platform","lifts,accessible"],
+        ["kilpauk","Kilpauk Medical College",13.0779,80.2418,"metro","Green Line","Island platform","lifts,accessible"],
+        ["pachai","Pachaiyappa College",13.0755,80.2329,"metro","Green Line","Island platform","lifts,accessible"],
+        ["shenoy","Shenoy Nagar",13.0756,80.2255,"metro","Green Line","Island platform","lifts,accessible"],
+        ["annatower","Anna Nagar Tower",13.0848,80.2101,"metro","Green Line","Island platform","parking,lifts,accessible"],
+        ["annanagar","Anna Nagar East",13.0842,80.2186,"metro","Green Line","Island platform","lifts,accessible"],
+        ["thiru","Thirumangalam",13.0850,80.2014,"metro","Green Line","P1 to St Thomas Mount / P2 to Central","parking,lifts,accessible"],
+        ["koyam","Koyambedu Metro",13.0734,80.1948,"metro","Green Line","P1 to St Thomas Mount / P2 to Central","parking,lifts,accessible"],
+        ["cmbtm","CMBT Metro",13.0687,80.2039,"metro","Green Line","P1 to St Thomas Mount / P2 to Central","parking,lifts,accessible,interchange"],
+        ["arumb","Arumbakkam",13.0624,80.2111,"metro","Green Line","P1 to St Thomas Mount / P2 to Central","lifts,accessible"],
+        ["vadapalani","Vadapalani",13.0502,80.2121,"metro","Green Line","P1 to St Thomas Mount / P2 to Central","parking,lifts,accessible"],
+        ["ashok","Ashok Nagar",13.0355,80.2117,"metro","Green Line","P1 to St Thomas Mount / P2 to Central","parking,lifts,accessible"],
+        ["ekkattu","Ekkattuthangal",13.0171,80.2055,"metro","Green Line","P1 to St Thomas Mount / P2 to Central","parking,lifts,accessible"],
+        ["alandur","Alandur",13.0046,80.2018,"metro","Blue/Green Interchange","Platforms 1-4","parking,lifts,accessible,interchange"],
+        ["stmmetro","St Thomas Mount Metro",13.0051,80.1935,"metro","Green Line","Terminal platform","parking,lifts,accessible,interchange"],
+        ["beach","Chennai Beach",13.0921,80.2890,"train","Suburban/MRTS","Platforms 1-10","parking,accessible,interchange"],
+        ["fort","Chennai Fort",13.0827,80.2864,"train","South Line/MRTS","Platforms 1-4","accessible,interchange"],
+        ["park","Park Town",13.0798,80.2751,"train","MRTS","Elevated platforms","accessible,interchange"],
+        ["centralrail","Chennai Central MMC",13.0834,80.2750,"train","North/West Line","Platforms 1-12","parking,lifts,accessible,interchange"],
+        ["egmorer","Chennai Egmore",13.0780,80.2615,"train","South Line","Platforms 1-11","parking,lifts,accessible,interchange"],
+        ["mambalam","Mambalam",13.0382,80.2274,"train","South Line","Platforms 1-4","parking,accessible"],
+        ["saidapetr","Saidapet Railway",13.0217,80.2239,"train","South Line","Platforms 1-4","accessible"],
+        ["guindyr","Guindy Railway",13.0092,80.2135,"train","South Line","Platforms 1-4","parking,accessible,interchange"],
+        ["stthomasr","St Thomas Mount Railway",13.0052,80.1939,"train","South Line/MRTS","Platforms 1-4","parking,lifts,accessible,interchange"],
+        ["palavan","Pazhavanthangal",12.9897,80.1883,"train","South Line","Platforms 1-4","accessible"],
+        ["meenar","Meenambakkam Railway",12.9870,80.1760,"train","South Line","Platforms 1-4","accessible"],
+        ["tirusulam","Tirusulam",12.9807,80.1644,"train","South Line","Platforms 1-4","accessible,interchange"],
+        ["pallavaram","Pallavaram",12.9675,80.1491,"train","South Line","Platforms 1-4","parking,accessible"],
+        ["chromepet","Chromepet",12.9516,80.1462,"train","South Line","Platforms 1-4","parking,accessible"],
+        ["tambsan","Tambaram Sanatorium",12.9385,80.1326,"train","South Line","Platforms 1-4","parking,accessible"],
+        ["tambaramr","Tambaram Railway",12.9249,80.1000,"train","South Line","Platforms 1-10","parking,lifts,accessible,interchange"],
+        ["perungal","Perungalathur",12.9048,80.0889,"train","South Line","Platforms 1-4","parking,accessible"],
+        ["vandalur","Vandalur",12.8924,80.0806,"train","South Line","Platforms 1-4","parking,accessible"],
+        ["urapakkam","Urapakkam",12.8676,80.0691,"train","South Line","Platforms 1-4","parking,accessible"],
+        ["velacheryr","Velachery",12.9755,80.2207,"mrts","MRTS","Elevated platforms","parking,lifts,accessible,interchange"],
+        ["perungudi","Perungudi",12.9656,80.2461,"mrts","MRTS","Elevated platforms","parking,lifts,accessible"],
+        ["taramani","Taramani",12.9865,80.2513,"mrts","MRTS","Elevated platforms","parking,lifts,accessible"],
+        ["tiruvanmiyur","Tiruvanmiyur",12.9850,80.2594,"mrts","MRTS","Elevated platforms","parking,lifts,accessible"],
+        ["indiranagar","Indira Nagar",13.0011,80.2551,"mrts","MRTS","Elevated platforms","lifts,accessible"],
+        ["kasturba","Kasturba Nagar",13.0067,80.2513,"mrts","MRTS","Elevated platforms","lifts,accessible"],
+        ["kottur","Kotturpuram",13.0199,80.2465,"mrts","MRTS","Elevated platforms","lifts,accessible"],
+        ["greenways","Greenways Road",13.0275,80.2523,"mrts","MRTS","Elevated platforms","lifts,accessible"],
+        ["mandaveli","Mandaveli",13.0318,80.2604,"mrts","MRTS","Elevated platforms","lifts,accessible"],
+        ["thirumayilai","Thirumayilai",13.0339,80.2694,"mrts","MRTS","Elevated platforms","parking,lifts,accessible"],
+        ["lighthouse","Light House",13.0450,80.2797,"mrts","MRTS","Elevated platforms","lifts,accessible"],
+        ["triplicane","Triplicane",13.0588,80.2817,"mrts","MRTS","Elevated platforms","lifts,accessible"],
+        ["chepauk","Chepauk",13.0631,80.2819,"mrts","MRTS","Elevated platforms","lifts,accessible"],
+        ["chintadripet","Chintadripet",13.0741,80.2766,"mrts","MRTS","Elevated platforms","lifts,accessible"],
+        ["puzhuthi","Puzhuthivakkam MRTS",12.9732,80.1981,"mrts","MRTS Extension","Elevated platforms","accessible"],
+        ["broadway","Broadway / Parrys Bus Stop",13.0878,80.2837,"bus","MTC Hub","Bays vary by route","accessible,interchange"],
+        ["tnagarbus","T Nagar Bus Terminus",13.0418,80.2341,"bus","MTC Hub","Bays 1-12","parking,accessible"],
+        ["adyarbus","Adyar Depot",13.0064,80.2578,"bus","MTC Hub","Bays 1-8","accessible"],
+        ["thiruvanmiyurbus","Thiruvanmiyur Bus Terminus",12.9848,80.2598,"bus","MTC Hub","Bays 1-10","parking,accessible"],
+        ["velacherybus","Velachery Vijayanagar",12.9753,80.2209,"bus","MTC Hub","Bays 1-10","parking,accessible,interchange"],
+        ["tambbus","Tambaram Bus Terminus",12.9257,80.1173,"bus","MTC Hub","Bays 1-18","parking,accessible,interchange"],
+        ["cmbtbus","CMBT Bus Terminus",13.0696,80.2039,"bus","MTC Hub","Bays 1-30","parking,lifts,accessible,interchange"],
+        ["vit","VIT Chennai",12.8406,80.1534,"place","Campus","Gate pickup","parking,accessible"],
+        ["siruseri","Siruseri SIPCOT",12.8310,80.2197,"place","IT Corridor","Pickup zones","parking,accessible"]
+      ].map(([id,name,lat,lng,type,line,platform,facilities]) => ({ id,name,lat,lng,type,line,platform,facilities: facilities.split(",") }));
+
+      S.push(...[
+        ["kelambakkam","Kelambakkam Bus Terminus",12.7875,80.2208,"bus","MTC/SETC Hub","Bays 1-12","parking,accessible"],
+        ["sholinganallur","Sholinganallur Junction",12.9001,80.2279,"bus","OMR MTC Hub","Stops on OMR and ECR Link","parking,accessible"],
+        ["thoraipakkam","Thoraipakkam Bus Stop",12.9386,80.2377,"bus","OMR MTC Stop","OMR corridor stops","accessible"],
+        ["pallikaranai","Pallikaranai Bus Stop",12.9377,80.2154,"bus","Velachery-Tambaram Corridor","Main road stops","accessible"],
+        ["medavakkam","Medavakkam Koot Road",12.9171,80.1923,"bus","MTC Hub","Main road stops","parking,accessible"],
+        ["selaiyur","Selaiyur Camp Road",12.9182,80.1416,"bus","Tambaram Feeder","Main road stops","accessible"],
+        ["perumbakkam","Perumbakkam Bus Stop",12.9057,80.2007,"bus","OMR Feeder","Main road stops","accessible"],
+        ["navalur","Navalur Bus Stop",12.8458,80.2265,"bus","OMR MTC Stop","OMR corridor stops","accessible"],
+        ["semmenchery","Semmenchery Bus Stop",12.8658,80.2216,"bus","OMR MTC Stop","OMR corridor stops","accessible"],
+        ["tideel","TIDEL Park Bus Stop",12.9898,80.2501,"bus","IT Corridor","OMR corridor stops","accessible,interchange"],
+        ["annauniv","Anna University Bus Stop",13.0106,80.2353,"bus","MTC Stop","Sardar Patel Road stops","accessible"],
+        ["mylaporebus","Mylapore/Luz Bus Stop",13.0337,80.2687,"bus","MTC Stop","Luz Church Road stops","accessible"],
+        ["royapettah","Royapettah Bus Stop",13.0552,80.2642,"bus","MTC Stop","Whites Road stops","accessible"],
+        ["porur","Porur Junction",13.0358,80.1589,"bus","MTC Hub","Arcot Road stops","parking,accessible"],
+        ["iyyappanthangal","Iyyappanthangal Bus Depot",13.0385,80.1353,"bus","MTC Depot","Depot bays","parking,accessible"],
+        ["poonamallee","Poonamallee Bus Terminus",13.0473,80.0945,"bus","MTC Hub","Terminus bays","parking,accessible"],
+        ["ambattur","Ambattur OT Bus Terminus",13.1143,80.1548,"bus","MTC Hub","Terminus bays","parking,accessible"],
+        ["avadi","Avadi Railway",13.1148,80.1019,"train","West Line","Platforms 1-6","parking,accessible,interchange"],
+        ["tiruvallur","Tiruvallur Railway",13.1438,79.9089,"train","West Line","Platforms 1-6","parking,accessible"],
+        ["royapuram","Royapuram Railway/Bus Hub",13.1045,80.2936,"train","North Line","Platforms 1-4","parking,accessible,interchange"]
+      ].map(([id,name,lat,lng,type,line,platform,facilities]) => ({ id,name,lat,lng,type,line,platform,facilities: facilities.split(",") })));
+
+      S.push(...[
+        ["madhavaram","Madhavaram Bus Terminus",13.1488,80.2306,"bus","MTC North Hub","Terminus bays","parking,accessible"],
+        ["redhills","Red Hills Bus Terminus",13.1865,80.1991,"bus","MTC North Hub","Terminus bays","parking,accessible"],
+        ["perambur","Perambur Railway",13.1073,80.2454,"train","North/West Connector","Platforms 1-4","parking,accessible,interchange"],
+        ["villivakkam","Villivakkam Railway",13.1094,80.2058,"train","West Line","Platforms 1-4","parking,accessible"],
+        ["korattur","Korattur Railway",13.1082,80.1846,"train","West Line","Platforms 1-4","parking,accessible"],
+        ["pattaravakkam","Pattaravakkam Railway",13.1164,80.1660,"train","West Line","Platforms 1-4","accessible"],
+        ["annanagarwest","Anna Nagar West Depot",13.0878,80.1959,"bus","MTC Hub","Depot bays","parking,accessible"],
+        ["mogappair","Mogappair East Bus Stop",13.0837,80.1750,"bus","MTC Stop","Main road stops","accessible"],
+        ["maduravoyal","Maduravoyal Junction",13.0645,80.1608,"bus","MTC Stop","Bypass/Arcot Road stops","accessible"],
+        ["valasaravakkam","Valasaravakkam Bus Stop",13.0419,80.1722,"bus","Arcot Road Stop","Main road stops","accessible"],
+        ["virugambakkam","Virugambakkam Bus Stop",13.0477,80.1920,"bus","Arcot Road Stop","Main road stops","accessible"],
+        ["kk_nagar","KK Nagar Bus Terminus",13.0410,80.1994,"bus","MTC Hub","Terminus bays","parking,accessible"],
+        ["vadapalani_bus","Vadapalani Bus Stop",13.0511,80.2120,"bus","MTC/Metro Feeder","Arcot Road stops","accessible,interchange"],
+        ["nungambakkam","Nungambakkam Railway",13.0621,80.2425,"train","South Line","Platforms 1-4","parking,accessible"],
+        ["chetpet","Chetpet Railway",13.0714,80.2417,"train","South Line","Platforms 1-4","accessible"],
+        ["kilpauk_bus","Kilpauk Bus Stop",13.0835,80.2440,"bus","MTC Stop","Poonamallee High Road stops","accessible"],
+        ["purasai","Purasawalkam Bus Stop",13.0872,80.2545,"bus","MTC Stop","High Road stops","accessible"],
+        ["triplicanebus","Triplicane Bus Stop",13.0602,80.2765,"bus","MTC Stop","Bharathi Salai stops","accessible,interchange"],
+        ["marina","Marina Beach / Vivekananda House",13.0499,80.2804,"bus","MTC Beach Stop","Kamarajar Salai stops","accessible"],
+        ["besantnagar","Besant Nagar Bus Terminus",13.0002,80.2668,"bus","MTC Hub","Terminus bays","parking,accessible"],
+        ["thiruvanmiyur_ecr","Thiruvanmiyur ECR Junction",12.9857,80.2608,"bus","ECR/OMR Feeder","ECR stops","accessible"],
+        ["neelankarai","Neelankarai Bus Stop",12.9494,80.2544,"bus","ECR Stop","ECR stops","accessible"],
+        ["injambakkam","Injambakkam Bus Stop",12.9190,80.2514,"bus","ECR Stop","ECR stops","accessible"],
+        ["akkarai","Akkarai Bus Stop",12.8827,80.2449,"bus","ECR Stop","ECR stops","accessible"],
+        ["kovalam","Kovalam Bus Stop",12.7892,80.2501,"bus","ECR Stop","ECR stops","parking,accessible"],
+        ["madipakkam","Madipakkam Bus Stop",12.9623,80.1992,"bus","South Feeder","Main road stops","accessible"],
+        ["nanganallur_bus","Nanganallur Bus Stop",12.9802,80.1889,"bus","Airport Feeder","Main road stops","accessible"],
+        ["keelkattalai","Keelkattalai Bus Stop",12.9557,80.1860,"bus","South Feeder","Main road stops","accessible"],
+        ["pammal","Pammal Bus Stop",12.9740,80.1327,"bus","GST Feeder","Main road stops","accessible"],
+        ["kundrathur","Kundrathur Bus Terminus",12.9977,80.0972,"bus","MTC Hub","Terminus bays","parking,accessible"]
+      ].map(([id,name,lat,lng,type,line,platform,facilities]) => ({ id,name,lat,lng,type,line,platform,facilities: facilities.split(",") })));
+
+      const corridors = [
+        { name:"Metro Blue", mode:"Metro", ids:["wimco","tiruvot","newwash","tondi","washermetro","mannadi","highcourt","centralmetro","govestate","lic","thousand","agdm","teynampet","nandanam","saidapetm","littlemount","guindym","nanganallur","meenambmetro","airportm"], speed:34, wait:6, fareBase:12, fareKm:1.9, carbon:0.014 },
+        { name:"Metro Green", mode:"Metro", ids:["centralmetro","egmorem","nehrupark","kilpauk","pachai","shenoy","annanagar","annatower","thiru","koyam","cmbtm","arumb","vadapalani","ashok","ekkattu","alandur","stmmetro"], speed:32, wait:6, fareBase:12, fareKm:1.9, carbon:0.014 },
+        { name:"Suburban South", mode:"Train", ids:["beach","fort","egmorer","mambalam","saidapetr","guindyr","stthomasr","palavan","meenar","tirusulam","pallavaram","chromepet","tambsan","tambaramr","perungal","vandalur","urapakkam"], speed:38, wait:9, fareBase:10, fareKm:0.6, carbon:0.018 },
+        { name:"Suburban West", mode:"Train", ids:["centralrail","avadi","tiruvallur"], speed:40, wait:12, fareBase:10, fareKm:0.55, carbon:0.018 },
+        { name:"Suburban North", mode:"Train", ids:["centralrail","royapuram","beach"], speed:34, wait:12, fareBase:10, fareKm:0.55, carbon:0.018 },
+        { name:"MRTS", mode:"MRTS", ids:["beach","fort","park","chintadripet","chepauk","triplicane","lighthouse","thirumayilai","mandaveli","greenways","kottur","kasturba","indiranagar","tiruvanmiyur","taramani","perungudi","velacheryr","puzhuthi","stthomasr"], speed:33, wait:11, fareBase:10, fareKm:0.55, carbon:0.017 },
+        { name:"MTC Spine", mode:"Bus", ids:["tambbus","tambaramr","airportm","guindym","tnagarbus","egmorer","centralrail","broadway","adyarbus","thiruvanmiyurbus","velacherybus","cmbtbus"], speed:19, wait:8, fareBase:8, fareKm:1.15, carbon:0.030 },
+        { name:"MTC OMR Corridor", mode:"Bus", ids:["adyarbus","tideel","thiruvanmiyurbus","thoraipakkam","sholinganallur","semmenchery","navalur","siruseri","kelambakkam","vit"], speed:21, wait:9, fareBase:8, fareKm:1.2, carbon:0.030 },
+        { name:"MTC South Feeder", mode:"Bus", ids:["tambbus","selaiyur","medavakkam","perumbakkam","sholinganallur","kelambakkam","vit"], speed:18, wait:10, fareBase:8, fareKm:1.15, carbon:0.030 },
+        { name:"MTC GST/Inner Ring", mode:"Bus", ids:["tambbus","chromepet","airportm","guindym","annauniv","adyarbus","tideel","velacherybus"], speed:19, wait:8, fareBase:8, fareKm:1.15, carbon:0.030 },
+        { name:"MTC Arcot Road", mode:"Bus", ids:["poonamallee","iyyappanthangal","porur","vadapalani","tnagarbus","teynampet","lic","broadway"], speed:18, wait:9, fareBase:8, fareKm:1.15, carbon:0.030 },
+        { name:"MTC West Connector", mode:"Bus", ids:["ambattur","thiru","koyam","cmbtbus","arumb","egmorer","centralrail"], speed:18, wait:10, fareBase:8, fareKm:1.15, carbon:0.030 },
+        { name:"MTC North Connector", mode:"Bus", ids:["redhills","madhavaram","perambur","purasai","centralrail","broadway","royapuram"], speed:18, wait:10, fareBase:8, fareKm:1.15, carbon:0.030 },
+        { name:"MTC Anna Nagar Loop", mode:"Bus", ids:["villivakkam","annanagarwest","annatower","thiru","mogappair","maduravoyal","koyam"], speed:17, wait:9, fareBase:8, fareKm:1.15, carbon:0.030 },
+        { name:"MTC Inner City", mode:"Bus", ids:["broadway","centralrail","egmorer","purasai","kilpauk_bus","chetpet","nungambakkam","tnagarbus","mylaporebus","triplicanebus","marina"], speed:17, wait:8, fareBase:8, fareKm:1.15, carbon:0.030 },
+        { name:"MTC Beach/ECR", mode:"Bus", ids:["marina","besantnagar","thiruvanmiyur_ecr","neelankarai","injambakkam","akkarai","kovalam","kelambakkam"], speed:22, wait:10, fareBase:8, fareKm:1.2, carbon:0.030 },
+        { name:"MTC Airport South Feeder", mode:"Bus", ids:["airportm","nanganallur_bus","madipakkam","keelkattalai","medavakkam","pallikaranai","velacherybus"], speed:18, wait:9, fareBase:8, fareKm:1.15, carbon:0.030 },
+        { name:"MTC Pammal-Kundrathur", mode:"Bus", ids:["chromepet","pammal","kundrathur","poonamallee"], speed:18, wait:10, fareBase:8, fareKm:1.15, carbon:0.030 },
+        { name:"Suburban West Local", mode:"Train", ids:["centralrail","perambur","villivakkam","korattur","pattaravakkam","ambattur","avadi","tiruvallur"], speed:38, wait:10, fareBase:10, fareKm:0.55, carbon:0.018 },
+        { name:"Suburban South Local", mode:"Train", ids:["beach","fort","egmorer","chetpet","nungambakkam","mambalam","saidapetr","guindyr","stthomasr","palavan","meenar","tirusulam","pallavaram","chromepet","tambsan","tambaramr"], speed:37, wait:9, fareBase:10, fareKm:0.55, carbon:0.018 }
+      ];
+
+      const byId = Object.fromEntries(S.map((s) => [s.id, s]));
+      const graph = {};
+      const h = (a,b) => {
+        const R = 6371, dLat = (b.lat - a.lat) * Math.PI / 180, dLng = (b.lng - a.lng) * Math.PI / 180;
+        const x = Math.sin(dLat/2) ** 2 + Math.cos(a.lat*Math.PI/180) * Math.cos(b.lat*Math.PI/180) * Math.sin(dLng/2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+      };
+      const addEdge = (a,b,c) => {
+        graph[a] ||= [];
+        graph[b] ||= [];
+        const km = h(byId[a], byId[b]) * 1.08;
+        const mins = Math.max(1, km / c.speed * 60);
+        graph[a].push({ to:b, km, mins, c });
+        graph[b].push({ to:a, km, mins, c });
+      };
+      corridors.forEach((c) => c.ids.slice(0,-1).forEach((id,i) => addEdge(id, c.ids[i+1], c)));
+      [["centralmetro","centralrail"],["centralmetro","park"],["egmorem","egmorer"],["guindym","guindyr"],["airportm","tirusulam"],["stmmetro","stthomasr"],["cmbtm","cmbtbus"],["velacheryr","velacherybus"],["tambaramr","tambbus"],["tiruvanmiyur","thiruvanmiyurbus"],["highcourt","fort"],["beach","broadway"]].forEach(([a,b]) => {
+        const c = { name:"Walk interchange", mode:"Walk", speed:4.5, wait:0, fareBase:0, fareKm:0, carbon:0 };
+        addEdge(a,b,c);
+      });
+
+      const places = {
+        "Tambaram": { lat:12.9249, lng:80.1000 },
+        "VIT Chennai": { lat:12.8406, lng:80.1534 },
+        "Guindy": { lat:13.0067, lng:80.2206 },
+        "T Nagar": { lat:13.0418, lng:80.2341 },
+        "Adyar": { lat:13.0064, lng:80.2578 },
+        "Chennai Central": { lat:13.0827, lng:80.2707 },
+        "Velachery": { lat:12.9755, lng:80.2207 },
+        "Chennai Airport": { lat:12.9941, lng:80.1709 },
+        "Anna Nagar": { lat:13.0850, lng:80.2101 },
+        "Koyambedu": { lat:13.0694, lng:80.1948 },
+        "Egmore": { lat:13.0780, lng:80.2615 },
+        "Chromepet": { lat:12.9516, lng:80.1462 },
+        "Siruseri": { lat:12.8310, lng:80.2197 },
+        "Kelambakkam": { lat:12.7875, lng:80.2208 },
+        "Sholinganallur": { lat:12.9001, lng:80.2279 },
+        "Thoraipakkam": { lat:12.9386, lng:80.2377 },
+        "Pallikaranai": { lat:12.9377, lng:80.2154 },
+        "Medavakkam": { lat:12.9171, lng:80.1923 },
+        "Selaiyur": { lat:12.9182, lng:80.1416 },
+        "Perumbakkam": { lat:12.9057, lng:80.2007 },
+        "Navalur": { lat:12.8458, lng:80.2265 },
+        "Semmenchery": { lat:12.8658, lng:80.2216 },
+        "TIDEL Park": { lat:12.9898, lng:80.2501 },
+        "Anna University": { lat:13.0106, lng:80.2353 },
+        "Mylapore": { lat:13.0337, lng:80.2687 },
+        "Royapettah": { lat:13.0552, lng:80.2642 },
+        "Porur": { lat:13.0358, lng:80.1589 },
+        "Iyyappanthangal": { lat:13.0385, lng:80.1353 },
+        "Poonamallee": { lat:13.0473, lng:80.0945 },
+        "Ambattur": { lat:13.1143, lng:80.1548 },
+        "Avadi": { lat:13.1148, lng:80.1019 },
+        "Tiruvallur": { lat:13.1438, lng:79.9089 },
+        "Royapuram": { lat:13.1045, lng:80.2936 },
+        "Madhavaram": { lat:13.1488, lng:80.2306 },
+        "Red Hills": { lat:13.1865, lng:80.1991 },
+        "Perambur": { lat:13.1073, lng:80.2454 },
+        "Villivakkam": { lat:13.1094, lng:80.2058 },
+        "Korattur": { lat:13.1082, lng:80.1846 },
+        "Mogappair": { lat:13.0837, lng:80.1750 },
+        "Maduravoyal": { lat:13.0645, lng:80.1608 },
+        "Valasaravakkam": { lat:13.0419, lng:80.1722 },
+        "Virugambakkam": { lat:13.0477, lng:80.1920 },
+        "KK Nagar": { lat:13.0410, lng:80.1994 },
+        "Nungambakkam": { lat:13.0621, lng:80.2425 },
+        "Chetpet": { lat:13.0714, lng:80.2417 },
+        "Kilpauk": { lat:13.0835, lng:80.2440 },
+        "Purasawalkam": { lat:13.0872, lng:80.2545 },
+        "Triplicane": { lat:13.0602, lng:80.2765 },
+        "Marina Beach": { lat:13.0499, lng:80.2804 },
+        "Besant Nagar": { lat:13.0002, lng:80.2668 },
+        "Neelankarai": { lat:12.9494, lng:80.2544 },
+        "Injambakkam": { lat:12.9190, lng:80.2514 },
+        "Akkarai": { lat:12.8827, lng:80.2449 },
+        "Kovalam": { lat:12.7892, lng:80.2501 },
+        "Madipakkam": { lat:12.9623, lng:80.1992 },
+        "Nanganallur": { lat:12.9802, lng:80.1889 },
+        "Keelkattalai": { lat:12.9557, lng:80.1860 },
+        "Pammal": { lat:12.9740, lng:80.1327 },
+        "Kundrathur": { lat:12.9977, lng:80.0972 }
+      };
+      S.forEach((s) => places[s.name] = s);
+
+      let activeRoutes = [];
+      let activeIndex = 0;
+      let taiMap, taiLayers;
+      let miniMap, miniLayers;
+      let vehicleMarker, miniVehicleMarker;
+      let routeReady = false;
+      let delayDismissed = false;
+      let liveUpdatedAt = Date.now();
+      const liveData = {};
+      const chatHistory = [];
+
+      const el = (id) => document.getElementById(id);
+      const lookupPlace = (name) => {
+        const q = String(name || "").trim().toLowerCase();
+        if (!q) return null;
+        return places[name] || S.find((s) => s.name.toLowerCase() === q) || null;
+      };
+      const resolveName = (name) => {
+        const q = String(name || "").trim().toLowerCase();
+        if (!q) return "";
+        if (places[name]) return name;
+        const exact = S.find((s) => s.name.toLowerCase() === q);
+        if (exact) return exact.name;
+        return selectablePlaces().find((item) => item.toLowerCase().includes(q)) || "";
+      };
+      const placeFor = (name) => lookupPlace(name) || places.Tambaram;
+      const nearest = (p, types = ["metro","train","mrts","bus"], count = 5) => S.filter((s) => types.includes(s.type)).map((s) => ({ ...s, walkKm: h(p,s) * 1.18 })).sort((a,b) => a.walkKm - b.walkKm).slice(0,count);
+      const hasTransportAccess = (name) => {
+        const p = lookupPlace(name);
+        if (!p) return false;
+        if (p.type && ["metro","train","mrts","bus"].includes(p.type)) return true;
+        if (p.id && graph[p.id]?.length) return true;
+        const access = nearest(p, ["metro","train","mrts","bus"], 1)[0];
+        return Boolean(access && access.walkKm <= 3.5);
+      };
+      const selectablePlaces = () => Object.keys(places)
+        .filter((name) => hasTransportAccess(name))
+        .sort((a,b) => a.localeCompare(b));
+      const placeMeta = (name) => {
+        const p = lookupPlace(name);
+        if (!p) return { type:"Area", hint:"No network access" };
+        if (p.type && p.type !== "place") return { type:p.type.toUpperCase(), hint:p.line || "Transit node" };
+        const access = nearest(p, ["metro","train","mrts","bus"], 1)[0];
+        return { type:access?.type?.toUpperCase() || "AREA", hint:access ? `${access.name} - ${access.walkKm.toFixed(1)} km` : "Nearby access" };
+      };
+      const typeCode = (type) => ({ METRO:"ME", TRAIN:"TR", MRTS:"MR", BUS:"BU", AREA:"AR", PLACE:"PL" }[type] || "TA");
+      const suggestionBadges = (name) => {
+        const p = lookupPlace(name);
+        const types = new Set();
+        if (p?.type && ["metro","train","mrts","bus"].includes(p.type)) types.add(p.type);
+        nearest(p || places.Tambaram, ["metro","train","mrts","bus"], 3).forEach((s) => types.add(s.type));
+        return [...types].slice(0, 4).map((type) => {
+          const label = type === "metro" ? "M" : type === "train" ? "T" : type === "mrts" ? "R" : "B";
+          return `<span class="mini-mode ${type}">${label}</span>`;
+        }).join("");
+      };
+
+      function bestPath(startIds, endIds) {
+        const dist = {}, prev = {}, pq = [];
+        startIds.forEach((id) => { dist[id] = 0; pq.push([0,id,null]); });
+        while (pq.length) {
+          pq.sort((a,b) => a[0] - b[0]);
+          const [d,id,line] = pq.shift();
+          if (endIds.includes(id)) break;
+          if (d !== dist[id]) continue;
+          (graph[id] || []).forEach((e) => {
+            const transfer = line && line !== e.c.name && e.c.mode !== "Walk" ? 4 : 0;
+            const nd = d + e.mins + transfer;
+            if (nd < (dist[e.to] ?? Infinity)) {
+              dist[e.to] = nd;
+              prev[e.to] = { from:id, edge:e };
+              pq.push([nd,e.to,e.c.name]);
+            }
+          });
+        }
+        const end = endIds.reduce((best,id) => (dist[id] ?? Infinity) < (dist[best] ?? Infinity) ? id : best, endIds[0]);
+        if (!Number.isFinite(dist[end])) return null;
+        const edges = [];
+        for (let cur = end; prev[cur]; cur = prev[cur].from) edges.unshift({ from:prev[cur].from, ...prev[cur].edge });
+        return { edges, ids:[startIds[0], ...edges.map((e) => e.to)] };
+      }
+
+      function buildTransitRoute(aName,bName) {
+        const a = placeFor(aName), b = placeFor(bName);
+        const accessNodes = (p) => {
+          const direct = p.id && graph[p.id]?.length ? [{ ...p, walkKm:0 }] : [];
+          return [...direct, ...nearest(p, ["metro","train","mrts","bus"], 5)];
+        };
+        const starts = accessNodes(a);
+        const ends = accessNodes(b);
+        let best = null;
+        starts.forEach((s) => ends.forEach((d) => {
+          const path = bestPath([s.id], [d.id]);
+          if (!path) return;
+          const walkKm = s.walkKm + d.walkKm;
+          const transitKm = path.edges.reduce((sum,e) => sum + e.km, 0);
+          const mins = path.edges.reduce((sum,e) => sum + e.mins, 0) + (walkKm / 4.5 * 60);
+          const wait = [...new Set(path.edges.map((e) => e.c.name))].reduce((sum,line) => sum + (corridors.find((c) => c.name === line)?.wait || 0), 0);
+          const total = mins + wait;
+          if (!best || total < best.total) best = { s,d,path,walkKm,transitKm,total,wait };
+        }));
+        if (!best) return null;
+        const lines = [...new Set(best.path.edges.map((e) => e.c.name).filter((x) => x !== "Walk interchange"))];
+        const modes = [...new Set(best.path.edges.map((e) => e.c.mode).filter((m) => m !== "Walk"))];
+        const fare = Math.round(best.path.edges.reduce((sum,e) => sum + e.km * e.c.fareKm, 0) + lines.reduce((sum,line) => sum + (corridors.find((c) => c.name === line)?.fareBase || 0), 0));
+        const carbon = +(best.path.edges.reduce((sum,e) => sum + e.km * e.c.carbon, 0)).toFixed(2);
+        const transfers = best.path.edges.filter((e,i,arr) => i && e.c.name !== arr[i-1].c.name && e.c.mode !== "Walk").length;
+        const stationIds = [...new Set([best.s.id, ...best.path.edges.map((e) => e.to), best.d.id])];
+        return {
+          name: modes.length > 1 ? `${modes.join(" + ")}` : modes[0],
+          modes,
+          eta: Math.round(best.total),
+          fare: Math.max(8, fare),
+          carbon,
+          comfort: modes.includes("Metro") ? 88 : 78,
+          reliability: modes.includes("Bus") ? 82 : 90,
+          distance: +(best.walkKm + best.transitKm).toFixed(1),
+          walkKm:+best.walkKm.toFixed(2),
+          transfers,
+          stations: stationIds.map((id) => byId[id]),
+          lines,
+          score: 0,
+          confidence: 0,
+          type:"transit"
+        };
+      }
+
+      function privateRoute(name,aName,bName) {
+        const a = placeFor(aName), b = placeFor(bName);
+        const km = Math.max(1.2, h(a,b) * 1.28);
+        const profiles = {
+          "Bike Taxi": [27,4,22,9.5,0.055,66,82],
+          "Auto": [23,5,35,17.5,0.09,72,79],
+          "Cab": [25,6,55,22,0.13,86,86]
+        };
+        const [speed,wait,base,per,co2,comfort,reliability] = profiles[name];
+        return { name, modes:[name], eta:Math.round(km/speed*60*trafficFactor()+wait), fare:Math.round(base+km*per), carbon:+(km*co2).toFixed(2), comfort, reliability, distance:+km.toFixed(1), walkKm:0, transfers:0, stations:[], lines:[], type:"private", score:0, confidence:0 };
+      }
+
+      function score(routes) {
+        const maxEta = Math.max(...routes.map((r) => r.eta),1), maxFare = Math.max(...routes.map((r) => r.fare),1), maxCarbon = Math.max(...routes.map((r) => r.carbon),.1);
+        routes.forEach((r) => {
+          const t = 100 - r.eta / maxEta * 100, c = 100 - r.fare / maxFare * 100, g = 100 - r.carbon / maxCarbon * 100;
+          r.score = Math.max(42, Math.min(99, +(42 + t*.38 + c*.25 + g*.23 + r.reliability*.14 - r.transfers*2).toFixed(1)));
+          r.confidence = Math.max(74, Math.min(98, Math.round(r.reliability*.58 + r.comfort*.22 + Math.max(0,100-r.eta)*.12 + (r.stations.length ? 8 : 0))));
+        });
+        if (el("priority").value === "Fastest Route") routes.sort((a,b) => a.eta - b.eta);
+        else if (el("priority").value === "Cheapest Route") routes.sort((a,b) => a.fare - b.fare);
+        else if (el("priority").value === "Green Route") routes.sort((a,b) => a.carbon - b.carbon);
+        else routes.sort((a,b) => b.score - a.score);
+        return routes;
+      }
+
+      function liveRows(route) {
+        const base = Date.now() / 60000;
+        const items = (route.stations.length ? route.stations.slice(0,6) : nearest(placeFor(el("source").value), ["metro","train","mrts","bus"], 6)).map((s,i) => {
+          const headway = s.type === "metro" ? 6 : s.type === "bus" ? 8 : 11;
+          const due = Math.max(1, Math.round((headway - ((base + i*2) % headway))));
+          return `<div class="live-row"><div><b>${s.name}</b><span>${s.line} - ${s.platform}</span></div><em>${due} min</em></div>`;
+        });
+        el("liveBoard").innerHTML = `<div class="nearby-title"><span>Live arrivals</span><span class="live-age" id="liveAge">Updated ${liveAgeSeconds()}s ago</span></div>${items.join("")}`;
+      }
+
+      function renderNearest(aName,bName) {
+        const cards = [
+          ["Source", nearest(placeFor(aName), ["metro","train","mrts","bus"], 1)[0]],
+          ["Destination", nearest(placeFor(bName), ["metro","train","mrts","bus"], 1)[0]]
+        ];
+        el("nearbyCount").textContent = `${S.length} real nodes`;
+        el("nearbyGrid").innerHTML = cards.map(([label,s]) => `<div class="nearby-card"><b>${label}: ${s.name}</b><span>${s.line} - ${s.walkKm.toFixed(2)} km walk - ${s.facilities.join(", ")}</span></div>`).join("");
+      }
+
+      function modeClass2(m) {
+        const x = m.toLowerCase();
+        if (x.includes("metro")) return "metro-line";
+        if (x.includes("mrts")) return "mrts-line";
+        if (x.includes("train")) return "train-line";
+        if (x.includes("walk")) return "walk-line";
+        if (x.includes("bus")) return "bus";
+        if (x.includes("bike")) return "bike";
+        if (x.includes("auto")) return "auto";
+        return "cab";
+      }
+
+      function startLiveSimulation() {
+        updateLiveData();
+        setInterval(updateLiveData, 20000);
+      }
+
+      function updateLiveData() {
+        liveUpdatedAt = Date.now();
+        const crowd = ["Low", "Moderate", "High"];
+        activeRoutes.forEach((route, index) => {
+          liveData[index] = {
+            crowd: crowd[Math.floor(Math.random() * crowd.length)],
+            delay: Math.floor(Math.random() * 13)
+          };
+        });
+        renderCards();
+        renderDelayAlert();
+        if (activeRoutes[activeIndex]) renderRouteSidePanel(activeRoutes[activeIndex]);
+      }
+
+      function renderDelayAlert() {
+        const alert = el("delayAlert");
+        if (!alert) return;
+        const delayed = Object.values(liveData).some((item) => item.delay > 5);
+        alert.classList.toggle("show", delayed && !delayDismissed);
+      }
+
+      function liveBadgesFor(index) {
+        const data = liveData[index] || { crowd:"Low", delay:0 };
+        const crowdClass = data.crowd.toLowerCase();
+        return `<div class="live-badges"><span class="live-badge ${crowdClass}">${data.crowd} crowd</span><span class="live-badge delay">+${data.delay} min</span></div>`;
+      }
+
+      function renderCards() {
+        if (!activeRoutes.length) {
+          if (el("routesCompact")) el("routesCompact").innerHTML = "";
+          if (el("routeOptionsFull")) el("routeOptionsFull").innerHTML = "";
+          return;
+        }
+        const fastest = [...activeRoutes].sort((a,b) => a.eta - b.eta)[0];
+        const cheapest = [...activeRoutes].sort((a,b) => a.fare - b.fare)[0];
+        const lowWalk = [...activeRoutes].sort((a,b) => (a.walkKm || 0) - (b.walkKm || 0))[0];
+        const fewTransfers = [...activeRoutes].sort((a,b) => (a.transfers || 0) - (b.transfers || 0))[0];
+        const labelsFor = (r,i) => [
+          i === 0 ? "AI Pick" : "",
+          r === fastest ? "Fastest" : "",
+          r === cheapest ? "Lowest fare" : "",
+          r === lowWalk ? "Low walk" : "",
+          r === fewTransfers && r.transfers === 0 ? "No transfer" : ""
+        ].filter(Boolean);
+        const cardFor = (r,i,compact = false) => `
+          <article class="route-card ${i === activeIndex ? "selected" : ""}" data-route="${i}">
+            <div class="route-title"><strong>${r.name}</strong><span class="badge">${r.confidence}%</span></div>
+            <div class="modes">${r.modes.map((m) => `<span class="mode ${modeClass2(m)}">${m}</span>`).join("")}${r.transfers ? `<span class="mode walk-line">${r.transfers} transfer</span>` : ""}</div>
+            <div class="route-labels">${labelsFor(r,i).map((label) => `<span class="route-label">${label}</span>`).join("")}</div>
+            ${liveBadgesFor(i)}
+            <div class="route-stats">
+              <div class="route-stat"><strong>${r.eta}m</strong><span>ETA</span></div>
+              <div class="route-stat"><strong>INR ${r.fare}</strong><span>Fare</span></div>
+              <div class="route-stat"><strong>${r.distance}km</strong><span>Distance</span></div>
+              <div class="route-stat"><strong>${r.walkKm || 0}km</strong><span>Walk</span></div>
+            </div>
+            <button class="book" onclick="TransitLayer.book(${i})">${compact ? "Book Route" : "Select & Book"}</button>
+          </article>`;
+        el("routesCompact").innerHTML = activeRoutes.slice(0,3).map((r,i) => cardFor(r,i,true)).join("");
+        if (el("routeOptionsFull")) {
+          const publicRoutes = activeRoutes.map((r,i) => ({ r,i })).filter(({ r }) => r.type === "transit");
+          const privateRoutes = activeRoutes.map((r,i) => ({ r,i })).filter(({ r }) => r.type !== "transit");
+          el("routeOptionsFull").innerHTML = `
+            <div class="route-group">
+              <div class="route-group-title">Recommended</div>
+              ${cardFor(activeRoutes[0], 0, false)}
+            </div>
+            <div class="route-group">
+              <div class="route-group-title">Public Transport</div>
+              ${publicRoutes.map(({ r,i }) => cardFor(r,i,false)).join("")}
+            </div>
+            <div class="route-group">
+              <div class="route-group-title">Private Mobility</div>
+              ${privateRoutes.map(({ r,i }) => cardFor(r,i,false)).join("")}
+            </div>
+          `;
+        }
+      }
+
+      function renderTimeline2(r) {
+        const src = el("source").value, dst = el("destination").value;
+        const mid = r.stations.length ? r.stations.map((s) => [s.type.toUpperCase(), s.name, s.platform]).slice(0,7) : [[r.name, r.name, `${r.eta}m`]];
+        const steps = [["Start", src, "Walk or pickup"], ...mid, ["Arrive", dst, `${r.eta}m`]];
+        el("timeline").innerHTML = steps.map((step) => `<div class="timeline-step"><span class="timeline-dot"></span><b>${step[0]} - ${step[1]}</b><span>${step[2]}</span></div>`).join("");
+      }
+
+      function renderAnalytics2() {
+        const fastest = [...activeRoutes].sort((a,b) => a.eta-b.eta)[0], cheapest = [...activeRoutes].sort((a,b) => a.fare-b.fare)[0], greenest = [...activeRoutes].sort((a,b) => a.carbon-b.carbon)[0];
+        el("kpiTime").textContent = `${fastest.eta}m`;
+        el("kpiFare").textContent = `INR ${cheapest.fare}`;
+        el("kpiCarbon").textContent = `${greenest.carbon}kg`;
+        el("kpiModes").textContent = activeRoutes.length;
+        el("scoreBars").innerHTML = activeRoutes.map((r) => `<div class="bar-row"><span>${r.name}</span><div class="bar"><div style="width:${r.score}%"></div></div><b>${r.score}</b></div>`).join("");
+        renderRouteSidePanel(activeRoutes[activeIndex] || activeRoutes[0]);
+      }
+
+      function renderRouteSidePanel(r) {
+        if (!el("routeSidePanel") || !r) return;
+        const stations = r.stations.length ? r.stations : nearest(placeFor(el("source").value), ["metro","train","mrts","bus"], 4);
+        const steps = [
+          { code:"S", title:el("source").value, meta:r.walkKm ? `Walk ${r.walkKm} km to ${stations[0]?.name || "pickup"}` : "Pickup at source" },
+          ...stations.slice(0, 7).map((s) => ({ code:s.type === "metro" ? "M" : s.type === "mrts" ? "R" : s.type === "train" ? "T" : "B", title:s.name, meta:`${s.line} - ${s.platform}` })),
+          { code:"D", title:el("destination").value, meta:`Arrive in ${r.eta} min` }
+        ];
+        el("routeSidePanel").innerHTML = `
+          <div class="side-route-summary">
+            <div class="kpi"><strong>${r.eta}m</strong><span>ETA</span></div>
+            <div class="kpi"><strong>${r.distance}km</strong><span>Distance</span></div>
+            <div class="kpi"><strong>${r.transfers || 0}</strong><span>Transfers</span></div>
+          </div>
+          ${steps.map((step) => `<div class="side-route-step"><i>${step.code}</i><div><b>${step.title}</b><span>${step.meta}</span></div></div>`).join("")}
+        `;
+      }
+
+      function renderStationStrip(r) {
+        el("transferSummary").textContent = r.lines.length ? `${r.lines.join(" -> ")} - ${r.transfers} transfer${r.transfers === 1 ? "" : "s"}` : "Door-to-door private route";
+        el("stationStrip").innerHTML = (r.stations.length ? r.stations : nearest(placeFor(el("source").value), ["metro","train","mrts","bus"], 6)).map((s) => `<div class="station-chip"><b>${s.name}</b><span>${s.line}<br>${s.platform}<br>${s.facilities.join(", ")}</span></div>`).join("");
+      }
+
+      function animateScore(score) {
+        const node = el("scoreValue");
+        const ring = document.querySelector(".score-ring");
+        if (!node || !ring) return;
+        const start = performance.now();
+        const duration = 800;
+        const target = Number(score) || 0;
+        const step = (now) => {
+          const t = Math.min(1, (now - start) / duration);
+          const eased = 1 - Math.pow(1 - t, 3);
+          const value = +(target * eased).toFixed(1);
+          node.textContent = value;
+          ring.style.setProperty("--score-pct", `${value}%`);
+          if (t < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }
+
+      function renderCo2Impact(route) {
+        const target = el("co2Impact");
+        if (!target || !route) return;
+        const cab = activeRoutes.find((item) => item.name === "Cab") || activeRoutes.sort((a,b) => b.carbon - a.carbon)[0];
+        const saved = Math.max(0, +((cab?.carbon || route.carbon) - route.carbon).toFixed(2));
+        const trees = +(saved / 21).toFixed(2);
+        target.textContent = saved > 0
+          ? `You saved ${saved} kg CO2 by choosing ${route.name} over ${cab.name} - equivalent to planting ${trees} trees.`
+          : `${route.name} is the current baseline for this journey.`;
+      }
+
+      function greenPoints() {
+        return Number(localStorage.getItem("tai_green_points") || el("greenPoints")?.textContent || 0);
+      }
+
+      function setGreenPoints(value, animate = false) {
+        const node = el("greenPoints");
+        localStorage.setItem("tai_green_points", String(value));
+        if (!node) return;
+        if (!animate) {
+          node.textContent = value;
+          return;
+        }
+        const from = Number(node.textContent || 0);
+        const start = performance.now();
+        const step = (now) => {
+          const t = Math.min(1, (now - start) / 1000);
+          node.textContent = Math.round(from + (value - from) * t);
+          if (t < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }
+
+      function saveJourney(route) {
+        if (!route) return;
+        const cab = activeRoutes.find((item) => item.name === "Cab");
+        const savedCo2 = Math.max(0, +(((cab?.carbon || route.carbon) - route.carbon).toFixed(2)));
+        const item = {
+          source: el("source").value,
+          destination: el("destination").value,
+          mode: route.name,
+          fare: route.fare,
+          eta: route.eta,
+          carbon: route.carbon,
+          savedCo2,
+          timestamp: new Date().toISOString(),
+          ticketId: el("ticketId").textContent
+        };
+        const history = JSON.parse(localStorage.getItem("tai_history") || "[]");
+        localStorage.setItem("tai_history", JSON.stringify([item, ...history].slice(0, 5)));
+        renderHistory();
+      }
+
+      function renderHistory() {
+        const target = el("journeyHistory");
+        if (!target) return;
+        const history = JSON.parse(localStorage.getItem("tai_history") || "[]");
+        const trips = el("walletTrips");
+        const saved = el("walletSavedCo2");
+        if (trips) trips.textContent = history.length;
+        if (saved) saved.textContent = `${history.reduce((sum, item) => sum + Number(item.savedCo2 || 0), 0).toFixed(2)}kg`;
+        target.innerHTML = history.length ? history.map((item, index) => `
+          <button class="history-card" data-history="${index}">
+            <b>${item.source} to ${item.destination}</b>
+            <span>${item.mode} - ${item.eta} min - INR ${item.fare} - ${new Date(item.timestamp).toLocaleString()}</span>
+          </button>
+        `).join("") : `<div class="history-card"><b>No journeys yet</b><span>Confirmed tickets will appear here.</span></div>`;
+      }
+
+      function afterConfirm(route) {
+        saveJourney(route);
+        const cab = activeRoutes.find((item) => item.name === "Cab");
+        if (cab && route.carbon < cab.carbon) {
+          setGreenPoints(greenPoints() + 10 + Math.floor(Math.random() * 31), true);
+        }
+      }
+
+      function passCanvas(route) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 600;
+        canvas.height = 260;
+        const ctx = canvas.getContext("2d");
+        const ticket = el("ticketId").textContent;
+        ctx.fillStyle = "#08111b";
+        ctx.fillRect(0, 0, 600, 260);
+        const grad = ctx.createLinearGradient(0, 0, 600, 260);
+        grad.addColorStop(0, "#0ea5e9");
+        grad.addColorStop(1, "#4f46e5");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 600, 8);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 22px Inter, Arial";
+        ctx.fillText("TransitAI", 28, 42);
+        ctx.font = "bold 14px Inter, Arial";
+        ctx.textAlign = "right";
+        ctx.fillText(ticket, 572, 40);
+        ctx.textAlign = "left";
+        ctx.font = "bold 30px Inter, Arial";
+        ctx.fillText(`${el("source").value} -> ${el("destination").value}`, 28, 106);
+        ctx.font = "18px Inter, Arial";
+        ctx.fillStyle = "#cbd5e1";
+        ctx.fillText(`${route.name}  |  ${route.eta} min  |  INR ${route.fare + 5}`, 28, 140);
+        ctx.setLineDash([8, 8]);
+        ctx.strokeStyle = "rgba(255,255,255,0.35)";
+        ctx.beginPath();
+        ctx.moveTo(28, 166);
+        ctx.lineTo(572, 166);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.font = "14px Inter, Arial";
+        ctx.fillText(new Date().toLocaleString(), 28, 220);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(472, 176, 82, 82);
+        ctx.fillStyle = "#07111f";
+        for (let y = 0; y < 9; y++) {
+          for (let x = 0; x < 9; x++) {
+            if ((x * 7 + y * 11 + ticket.length) % 3 === 0) ctx.fillRect(480 + x * 8, 184 + y * 8, 6, 6);
+          }
+        }
+        return canvas;
+      }
+
+      function downloadPass() {
+        const route = window.__transitSelectedRoute;
+        if (!route) return showToast("Select a route first.");
+        passCanvas(route).toBlob((blob) => {
+          if (!blob) {
+            showToast("Pass download failed.");
+            return;
+          }
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = "TransitAI-pass.png";
+          link.click();
+          URL.revokeObjectURL(link.href);
+        }, "image/png");
+      }
+
+      async function sharePass() {
+        const route = window.__transitSelectedRoute;
+        if (!route) return showToast("Select a route first.");
+        const text = `${el("ticketId").textContent}: ${el("source").value} to ${el("destination").value}, ${route.name}, ${route.eta} min, INR ${route.fare + 5}`;
+        const url = journeyShareUrl(route);
+        if (navigator.share) {
+          await navigator.share({ title:"TransitAI Pass", text, url });
+        } else {
+          await navigator.clipboard.writeText(`${text}\n${url}`);
+          showToast("Journey link copied");
+        }
+      }
+
+      function journeyShareUrl(route) {
+        const base = location.protocol === "file:" ? "https://transitai.app/plan" : `${location.origin}${location.pathname}`;
+        const params = new URLSearchParams({
+          from: el("source").value,
+          to: el("destination").value,
+          mode: route?.name || "",
+          ticket: el("ticketId").textContent
+        });
+        return `${base}?${params.toString()}`;
+      }
+
+      function liveAgeSeconds() {
+        return Math.max(0, Math.round((Date.now() - liveUpdatedAt) / 1000));
+      }
+
+      function refreshLiveAge() {
+        const node = el("liveAge");
+        if (node) node.textContent = `Updated ${liveAgeSeconds()}s ago`;
+      }
+
+      function routeContext() {
+        const selected = window.__transitSelectedRoute;
+        return {
+          source: el("source").value,
+          destination: el("destination").value,
+          selectedMode: selected?.name,
+          eta: selected?.eta,
+          fare: selected?.fare,
+          stations: selected?.stations?.map((s) => s.name) || [],
+          carbonKg: selected?.carbon,
+          comfortScore: selected?.comfort,
+          mobilityScore: selected?.score,
+          options: activeRoutes.map((r, index) => ({ name:r.name, eta:r.eta, fare:r.fare, carbon:r.carbon, walkKm:r.walkKm, transfers:r.transfers, live:liveData[index] })),
+          delay: selected ? liveData[activeIndex]?.delay : null,
+          crowd: selected ? liveData[activeIndex]?.crowd : null,
+          weather: weatherState
+        };
+      }
+
+      async function askClaude(text) {
+        chatHistory.push({ role:"user", content:text });
+        const send = el("sendBtn");
+        send.disabled = true;
+        chat.insertAdjacentHTML("beforeend", `<div class="bubble ai" id="typingBubble"><span class="typing"><span></span><span></span><span></span></span></div>`);
+        try {
+          if (location.protocol === "file:") {
+            throw new Error("Backend not running");
+          }
+          const response = await fetch("/api/chat", {
+            method:"POST",
+            headers:{ "content-type":"application/json" },
+            body:JSON.stringify({ messages:chatHistory, routeContext:routeContext() })
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "Chat failed");
+          chatHistory.push({ role:"assistant", content:data.text });
+          el("typingBubble")?.remove();
+          chat.insertAdjacentHTML("beforeend", `<div class="bubble ai">${data.text}</div>`);
+        } catch (error) {
+          el("typingBubble")?.remove();
+          const fallback = typeof assistantAnswer === "function"
+            ? assistantAnswer(text)
+            : "AI service is unavailable. Start the backend to use Claude chat.";
+          chat.insertAdjacentHTML("beforeend", `<div class="bubble ai">${fallback}<br><span style="color:var(--muted);font-size:12px;">Claude chat needs the backend at /api/chat.</span></div>`);
+        } finally {
+          send.disabled = false;
+          chat.scrollTop = chat.scrollHeight;
+        }
+      }
+
+      function ensureMap2() {
+        if (taiMap) return;
+        const old = el("routeMap");
+        const fresh = old.cloneNode(false);
+        old.parentNode.replaceChild(fresh, old);
+        taiMap = L.map("routeMap", { zoomControl:true, attributionControl:true, scrollWheelZoom:true });
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19, attribution:"&copy; OpenStreetMap" }).addTo(taiMap);
+        taiLayers = L.layerGroup().addTo(taiMap);
+      }
+
+      function ensureMiniMap() {
+        if (miniMap || !window.L || !el("routeMiniMap")) return;
+        miniMap = L.map("routeMiniMap", {
+          zoomControl: false,
+          attributionControl: false,
+          scrollWheelZoom: false,
+          dragging: true
+        });
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: "&copy; OpenStreetMap"
+        }).addTo(miniMap);
+        miniLayers = L.layerGroup().addTo(miniMap);
+      }
+
+      function drawMiniMap(r) {
+        if (!r || !el("routeMiniMap")) return;
+        if (!window.L) {
+          el("routeMiniMap").innerHTML = `<div style="display:grid;place-items:center;height:100%;color:var(--muted);padding:18px;text-align:center;">Map library unavailable. Route details are still shown below.</div>`;
+          return;
+        }
+        ensureMiniMap();
+        if (!miniMap || !miniLayers) return;
+        miniLayers.clearLayers();
+        const a = placeFor(el("source").value), b = placeFor(el("destination").value);
+        const routeStations = r.stations.length ? r.stations : [];
+        const path = [[a.lat,a.lng], ...routeStations.map((s) => [s.lat,s.lng]), [b.lat,b.lng]];
+        L.polyline(path, { color:"#0f172a", weight:10, opacity:.34, lineCap:"round" }).addTo(miniLayers);
+        L.polyline(path, { color:r.type === "transit" ? "#22d3ee" : "#10b981", weight:5, opacity:.95, lineCap:"round" }).addTo(miniLayers);
+        L.circleMarker(path[0], { radius:7, color:"#fff", weight:2, fillColor:"#4f46e5", fillOpacity:1 }).addTo(miniLayers).bindTooltip(el("source").value);
+        L.circleMarker(path[path.length - 1], { radius:7, color:"#fff", weight:2, fillColor:"#06b6d4", fillOpacity:1 }).addTo(miniLayers).bindTooltip(el("destination").value);
+        routeStations.forEach((s) => {
+          const color = s.type === "metro" ? "#2563eb" : s.type === "mrts" ? "#06b6d4" : s.type === "train" ? "#f59e0b" : "#10b981";
+          L.circleMarker([s.lat,s.lng], { radius:4, color:"#fff", weight:1, fillColor:color, fillOpacity:1 }).addTo(miniLayers);
+        });
+        miniMap.fitBounds(L.latLngBounds(path), { padding:[26,26], maxZoom:13 });
+        miniVehicleMarker = animateVehicle(path, miniLayers, miniVehicleMarker, miniMap);
+        setTimeout(() => miniMap.invalidateSize(), 120);
+      }
+
+      function animateVehicle(path, layer, existing, mapRef) {
+        if (!window.L || !path.length || !layer) return existing;
+        if (existing) layer.removeLayer(existing);
+        const marker = L.circleMarker(path[0], {
+          radius: 6,
+          color: "#ffffff",
+          weight: 2,
+          fillColor: "#10b981",
+          fillOpacity: 1
+        }).addTo(layer).bindTooltip("Live vehicle");
+        const duration = 9000;
+        const start = performance.now();
+        const step = (now) => {
+          if (!marker._map || marker._map !== mapRef) return;
+          const progress = ((now - start) % duration) / duration;
+          const scaled = progress * (path.length - 1);
+          const index = Math.min(path.length - 2, Math.floor(scaled));
+          const local = scaled - index;
+          const from = path[index], to = path[index + 1] || from;
+          marker.setLatLng([
+            from[0] + (to[0] - from[0]) * local,
+            from[1] + (to[1] - from[1]) * local
+          ]);
+          requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+        return marker;
+      }
+
+      function drawMap(r) {
+        if (!window.L) {
+          const map = el("routeMap");
+          if (map) {
+            map.innerHTML = `<div class="map-fallback"><div><b>${el("source").value} to ${el("destination").value}</b><span>${r.name} - ${r.eta} min - ${r.distance} km</span><span>Map engine unavailable. Route intelligence is still active.</span></div></div>`;
+          }
+          drawMiniMap(r);
+          return;
+        }
+        ensureMap2();
+        taiLayers.clearLayers();
+        const a = placeFor(el("source").value), b = placeFor(el("destination").value);
+        const routeStations = r.stations.length ? r.stations : [];
+        const path = [[a.lat,a.lng], ...routeStations.map((s) => [s.lat,s.lng]), [b.lat,b.lng]];
+        L.polyline(path, { color:"#0f172a", weight:15, opacity:.38, lineCap:"round" }).addTo(taiLayers);
+        L.polyline(path, { color:r.type === "transit" ? "#22d3ee" : "#10b981", weight:7, opacity:.95, lineCap:"round" }).addTo(taiLayers);
+        const dot = (text,color) => L.divIcon({ className:"", html:`<div style="width:28px;height:28px;border-radius:999px;border:5px solid ${color};background:#fff;box-shadow:0 12px 28px rgba(2,6,23,.28);display:grid;place-items:center;color:#07111f;font-weight:900;font-size:10px;">${text}</div>`, iconSize:[28,28], iconAnchor:[14,14] });
+        L.marker([a.lat,a.lng], { icon:dot("S","#4f46e5") }).addTo(taiLayers).bindTooltip(el("source").value);
+        L.marker([b.lat,b.lng], { icon:dot("D","#06b6d4") }).addTo(taiLayers).bindTooltip(el("destination").value);
+        nearest(a, ["metro","train","mrts","bus"], 7).concat(nearest(b, ["metro","train","mrts","bus"], 7)).forEach((s) => {
+          const color = s.type === "metro" ? "#2563eb" : s.type === "mrts" ? "#06b6d4" : s.type === "train" ? "#f59e0b" : "#10b981";
+          L.circleMarker([s.lat,s.lng], { radius:6, color:"#fff", weight:2, fillColor:color, fillOpacity:1 }).addTo(taiLayers).bindTooltip(`${s.name} - ${s.line}`);
+        });
+        taiMap.fitBounds(L.latLngBounds(path), { padding:[54,54], maxZoom:13 });
+        vehicleMarker = animateVehicle(path, taiLayers, vehicleMarker, taiMap);
+        setTimeout(() => taiMap.invalidateSize(), 80);
+        drawMiniMap(r);
+      }
+
+      function book(i, scroll = true) {
+        activeIndex = i;
+        const r = activeRoutes[i];
+        if (!r) return;
+        window.__transitSelectedRoute = r;
+        currentRoutes = activeRoutes;
+        selectedRouteIndex = i;
+        el("ticketId").textContent = `TAI-${Math.floor(100000 + Math.random()*899999)}`;
+        el("ticketRoute").textContent = r.name;
+        el("ticketEta").textContent = `${r.eta} min`;
+        el("ticketFare").textContent = `INR ${r.fare + 5}`;
+        el("ticketStatus").textContent = "Ready";
+        el("ticketActionMenu")?.classList.add("ticket-action-hidden");
+        el("ticketActionMenu")?.classList.remove("open");
+        if (typeof updateFareBreakdown === "function") updateFareBreakdown(r);
+        el("mapMode").textContent = r.name;
+        el("mapMeta").textContent = `${r.eta} min - ${r.distance} km - ${r.confidence}% confidence`;
+        animateScore(r.score);
+        el("bookingStatus").textContent = `${r.name} selected. ${r.lines.length ? r.lines.join(" -> ") : "Door-to-door"} itinerary ready.`;
+        document.querySelectorAll("[data-route]").forEach((card) => card.classList.toggle("selected", Number(card.dataset.route) === i));
+        renderQr(typeof ticketUrl === "function" ? ticketUrl() : `${el("ticketId").textContent}|${el("source").value}->${el("destination").value}|${r.name}|INR ${r.fare + 5}`);
+        renderCards();
+        renderTimeline2(r);
+        renderStationStrip(r);
+        renderRouteSidePanel(r);
+        renderCo2Impact(r);
+        liveRows(r);
+        drawMap(r);
+        drawMiniMap(r);
+        if (scroll) setPage("booking");
+      }
+
+      function plan() {
+        const options = selectablePlaces();
+        const rawA = el("source").value.trim(), rawB = el("destination").value.trim();
+        let a = resolveName(rawA), b = resolveName(rawB);
+        if (!rawA || !rawB) {
+          showToast("Enter both source and destination. Try Tambaram, Egmore, T Nagar, or Chennai Airport.");
+          return false;
+        }
+        if (!hasTransportAccess(a)) {
+          showToast(`No transport access found near "${rawA}". Choose a station or suggested Chennai area.`);
+          return false;
+        }
+        if (!hasTransportAccess(b)) {
+          showToast(`No transport access found near "${rawB}". Choose a station or suggested Chennai area.`);
+          return false;
+        }
+        if (a === b) {
+          showToast("Source and destination must be different.");
+          return false;
+        }
+        el("source").value = a;
+        el("destination").value = b;
+        el("planner").classList.remove("awaiting-plan");
+        routeReady = true;
+        const transit = buildTransitRoute(a,b);
+        activeRoutes = score([transit, privateRoute("Bike Taxi",a,b), privateRoute("Auto",a,b), privateRoute("Cab",a,b)].filter(Boolean));
+        activeIndex = 0;
+        updateLiveData();
+        el("mapTitle").textContent = `${a} to ${b}`;
+        el("routeHeading").textContent = `${a} to ${b}`;
+        el("routeSub").textContent = `Showing ${activeRoutes.length} corridor-aware options using real Chennai station nodes near your endpoints.`;
+        el("mapNetwork").textContent = "Chennai multimodal graph";
+        el("mapNetworkMeta").textContent = `${S.length} stations and stops - nearest nodes only`;
+        el("stationCount").textContent = S.length;
+        renderNearest(a,b);
+        renderCards();
+        renderAnalytics2();
+        book(0,false);
+        return true;
+      }
+
+      function boot() {
+        const list = el("stationSearch");
+        const options = selectablePlaces();
+        setGreenPoints(greenPoints(), false);
+        renderHistory();
+        if (list) {
+          list.innerHTML = options.map((name) => `<option value="${name}"></option>`).join("");
+        }
+        if (el("source").tagName === "SELECT") {
+          ["source","destination"].forEach((id) => {
+            el(id).innerHTML = `<option value="">Enter location</option>` + options.map((name) => `<option value="${name}">${name}</option>`).join("");
+          });
+        }
+        el("source").value = "";
+        el("destination").value = "";
+        if (el("aiBadge")) el("aiBadge").textContent = location.protocol === "file:" ? "Demo AI Assistant" : "Powered by Claude AI";
+        el("planner").classList.add("awaiting-plan");
+        el("nearbyGrid").innerHTML = `<div class="nearby-card"><b>Waiting for source</b><span>Enter a Chennai location with Metro, train, MRTS, or MTC access.</span></div><div class="nearby-card"><b>Waiting for destination</b><span>Suggestions appear as you type.</span></div>`;
+        el("nearbyCount").textContent = `${options.length} available`;
+        setupAutocomplete("source", options);
+        setupAutocomplete("destination", options);
+        el("priority").addEventListener("change", plan);
+        document.querySelectorAll("[data-quick]").forEach((button) => {
+          button.addEventListener("click", () => setTimeout(plan, 0));
+        });
+        el("dismissDelay")?.addEventListener("click", () => {
+          delayDismissed = true;
+          renderDelayAlert();
+        });
+        el("delayAlertText")?.addEventListener("click", () => setPage("routes"));
+        el("downloadPass")?.addEventListener("click", downloadPass);
+        el("sharePass")?.addEventListener("click", () => sharePass().catch(() => showToast("Sharing unavailable")));
+        el("copyTicketId")?.addEventListener("click", () => copyTicketId());
+        el("copyTicketDropdown")?.addEventListener("click", () => copyTicketId());
+        el("ticketActionToggle")?.addEventListener("click", () => el("ticketActionMenu")?.classList.toggle("open"));
+        document.addEventListener("click", (event) => {
+          const menu = el("ticketActionMenu");
+          if (menu && !menu.contains(event.target)) menu.classList.remove("open");
+        });
+        el("journeyHistory")?.addEventListener("click", async (event) => {
+          const card = event.target.closest("[data-history]");
+          if (!card) return;
+          const history = JSON.parse(localStorage.getItem("tai_history") || "[]");
+          const item = history[Number(card.dataset.history)];
+          if (!item) return;
+          el("source").value = item.source;
+          el("destination").value = item.destination;
+          if (plan()) {
+            const index = activeRoutes.findIndex((route) => route.name === item.mode);
+            if (index >= 0) book(index, false);
+            setPage("routes");
+          }
+        });
+        const runDemo = async () => {
+          el("source").value = "Tambaram";
+          el("destination").value = "Chennai Central";
+          if (plan()) {
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            book(0, false);
+            setPage("booking");
+            showToast("Demo mode activated");
+          }
+        };
+        el("tryDemoBtn")?.addEventListener("click", runDemo);
+        ["source","destination"].forEach((id) => {
+          el(id)?.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") return;
+            const panel = el(`${id}Suggestions`);
+            if (panel?.classList.contains("open")) return;
+            event.preventDefault();
+            if (plan()) setPage("routes");
+          });
+        });
+        startLiveSimulation();
+        setInterval(() => activeRoutes[activeIndex] && liveRows(activeRoutes[activeIndex]), 30000);
+        setInterval(refreshLiveAge, 1000);
+      }
+
+      function setupAutocomplete(id, options) {
+        const input = el(id);
+        const panel = el(`${id}Suggestions`);
+        if (!input || !panel) return;
+        let focused = -1;
+        const setFocused = (next) => {
+          const items = [...panel.querySelectorAll(".suggestion-item")];
+          if (!items.length) return;
+          focused = (next + items.length) % items.length;
+          items.forEach((item, index) => item.classList.toggle("active", index === focused));
+        };
+        const render = () => {
+          const q = input.value.trim().toLowerCase();
+          const matches = options
+            .filter((name) => !q || name.toLowerCase().includes(q))
+            .slice(0, 8);
+          panel.innerHTML = matches.map((name) => {
+            const meta = placeMeta(name);
+            return `<button type="button" class="suggestion-item" data-value="${name}">
+              <span class="suggestion-icon">${typeCode(meta.type)}</span>
+              <span><b>${name}</b><span>${meta.type} - ${meta.hint}</span></span>
+              <em class="suggestion-badges">${suggestionBadges(name)}</em>
+            </button>`;
+          }).join("");
+          focused = -1;
+          panel.classList.toggle("open", matches.length > 0 && document.activeElement === input);
+        };
+        input.addEventListener("focus", render);
+        input.addEventListener("input", render);
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") panel.classList.remove("open");
+          if (event.key === "ArrowDown" && panel.classList.contains("open")) {
+            event.preventDefault();
+            setFocused(focused + 1);
+          }
+          if (event.key === "ArrowUp" && panel.classList.contains("open")) {
+            event.preventDefault();
+            setFocused(focused - 1);
+          }
+          if (event.key === "Enter" && panel.classList.contains("open")) {
+            const items = [...panel.querySelectorAll(".suggestion-item")];
+            const item = items[focused] || items[0];
+            if (item) {
+              event.preventDefault();
+              input.value = item.dataset.value;
+              panel.classList.remove("open");
+            }
+          }
+        });
+        panel.addEventListener("mousedown", (event) => {
+          const item = event.target.closest(".suggestion-item");
+          if (!item) return;
+          event.preventDefault();
+          input.value = item.dataset.value;
+          panel.classList.remove("open");
+        });
+        document.addEventListener("click", (event) => {
+          if (!panel.contains(event.target) && event.target !== input) panel.classList.remove("open");
+        });
+      }
+
+      window.TransitData = { stations:S, corridors, places };
+      window.TransitPlanner = { plan, book };
+      window.TransitAI = { ask:askClaude, routeContext };
+      window.TransitLayer = { book, plan, hasPlan: () => routeReady, liveData, drawMiniMap };
+      window.TicketManager = { afterConfirm, downloadPass, sharePass };
+      window.WalletManager = { renderCo2Impact, renderHistory, setGreenPoints };
+      window.UIManager = { setPage, showToast, animateScore };
+      boot();
+    })();
+  </script>
+</body>
+</html>
